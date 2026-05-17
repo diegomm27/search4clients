@@ -1,0 +1,20 @@
+description = "Find potential B2B clients with the local search4clients workflow"
+prompt = """
+Read AGENTS.md first.
+
+This is a command-based workflow.
+
+1. Check config/search.request.json.
+2. If missing, copy config/search.request.example.json or run npm run setup.
+3. Ask only for missing required details:
+   - service or product offered
+   - target client type or industry
+   - country
+4. City is optional.
+5. Update config/search.request.json.
+6. Run npm run scan.
+7. Run npm run leads -- --search-id <id>.
+8. Export with npm run export -- --search-id <id> --format html --out output/search-<id>.html unless the user requests CSV/Markdown/JSON.
+
+Never send outreach automatically. Never invent companies, contacts, or source links. Demo mode is sample data only.
+"""

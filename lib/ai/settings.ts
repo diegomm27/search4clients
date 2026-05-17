@@ -17,9 +17,8 @@ export async function readSettings(): Promise<AISettings> {
     return { ...parsed, apiKeySet: Boolean(parsed.apiKey) };
   } catch {
     return {
-      provider: (process.env.AI_PROVIDER as "openai" | "mock") || "mock",
-      apiKeySet: Boolean(process.env.OPENAI_API_KEY),
-      apiKey: process.env.OPENAI_API_KEY,
+      provider: "mock",
+      apiKeySet: false,
       storagePath: "prisma/dev.db"
     };
   }

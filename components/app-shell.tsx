@@ -1,12 +1,11 @@
 import Link from "next/link";
-import { Database, FileDown, Search, Settings, Users } from "lucide-react";
+import { Home, Search, Settings, Users } from "lucide-react";
 
 const nav = [
-  { href: "/", label: "Dashboard", icon: Database },
-  { href: "/searches/new", label: "New search", icon: Search },
-  { href: "/leads", label: "Leads", icon: Users },
-  { href: "/settings", label: "Settings", icon: Settings },
-  { href: "/api/export?format=csv", label: "Export CSV", icon: FileDown }
+  { href: "/", label: "Home", icon: Home },
+  { href: "/searches/new", label: "Find clients", icon: Search },
+  { href: "/leads", label: "Potential clients", icon: Users },
+  { href: "/settings", label: "Settings", icon: Settings }
 ];
 
 export function AppShell({ children }: { children: React.ReactNode }) {

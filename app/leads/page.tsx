@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/storage/prisma";
-import { LeadTable } from "@/components/lead-table";
-import { leadStatuses } from "@/lib/search/schemas";
+import { LeadCardGrid } from "@/components/lead-card";
+import { DemoModeBanner } from "@/components/demo-mode-banner";
+import { visibleLeadStatuses } from "@/lib/leads/status";
 
 export const dynamic = "force-dynamic";
 
@@ -17,14 +18,15 @@ export default async function LeadsPage({ searchParams }: { searchParams: { stat
 
   return (
     <div className="space-y-6">
+      <DemoModeBanner />
       <div>
-        <h1 className="text-3xl font-semibold">Lead tracker</h1>
-        <p className="mt-2 text-sm text-moss">Filter, review, approve, reject, export, and open lead details.</p>
+        <h1 className="text-3xl font-semibold">Potential clients</h1>
+        <p className="mt-2 text-sm text-moss">Review each company, then mark it as a good fit or not a fit.</p>
       </div>
       <form className="grid gap-3 rounded-lg border border-line bg-white p-4 md:grid-cols-4">
         <select name="status" defaultValue={searchParams.status || ""} className="focus-ring rounded-md border border-line px-3 py-2 text-sm">
           <option value="">Any status</option>
-          {leadStatuses.map((status) => <option key={status} value={status}>{status}</option>)}
+          {visibleLeadStatuses.map((status) => <option key={status.value} value={status.value}>{status.label}</option>)}
         </select>
         <select name="grade" defaultValue={searchParams.grade || ""} className="focus-ring rounded-md border border-line px-3 py-2 text-sm">
           <option value="">Any grade</option>
@@ -33,7 +35,7 @@ export default async function LeadsPage({ searchParams }: { searchParams: { stat
         <input name="minScore" type="number" min="0" max="100" defaultValue={searchParams.minScore || ""} placeholder="Minimum score" className="focus-ring rounded-md border border-line px-3 py-2 text-sm" />
         <button className="focus-ring rounded-md bg-pine px-4 py-2 text-sm font-medium text-white hover:bg-ink">Apply filters</button>
       </form>
-      <LeadTable leads={leads} />
+      <LeadCardGrid leads={leads} />
     </div>
   );
 }

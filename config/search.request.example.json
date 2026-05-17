@@ -1,0 +1,25 @@
+{
+  "name": "Spain dental clinics for website redesign",
+  "service_offered": "Website redesign",
+  "industry": "Dental clinics",
+  "country": "Spain",
+  "city": null,
+  "desired_public_data": [
+    "website",
+    "contact_page",
+    "company_description",
+    "source_links"
+  ],
+  "ideal_client_signals": [
+    "old website",
+    "no online booking",
+    "poor mobile design"
+  ],
+  "exclude_signals": [
+    "large chains",
+    "franchises"
+  ],
+  "number_of_results": 25,
+  "minimum_score": 70,
+  "output_format": "dashboard"
+}

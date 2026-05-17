@@ -1,5 +1,5 @@
 import { prisma } from "@/lib/storage/prisma";
-import { leadsToCsv, leadsToMarkdown } from "@/lib/export/exporters";
+import { leadsToCsv, leadsToHtml, leadsToMarkdown } from "@/lib/export/exporters";
 
 export async function GET(request: Request) {
   const url = new URL(request.url);
@@ -24,6 +24,15 @@ export async function GET(request: Request) {
       headers: {
         "content-type": "text/markdown; charset=utf-8",
         "content-disposition": "attachment; filename=search4clients-leads.md"
+      }
+    });
+  }
+
+  if (format === "html") {
+    return new Response(leadsToHtml(leads), {
+      headers: {
+        "content-type": "text/html; charset=utf-8",
+        "content-disposition": "attachment; filename=search4clients-leads.html"
       }
     });
   }

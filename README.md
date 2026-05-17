@@ -1,260 +1,336 @@
 # search4clients
 
-search4clients is an open-source, local-first AI research assistant for finding better potential B2B clients. It helps freelancers, agencies, consultants, sales teams, and founders define a target client profile, search permitted public sources, score companies transparently, and review leads before taking action.
+Command-based, local-first B2B client research.
 
-It is **not** a mass outreach tool. It does not send emails, LinkedIn messages, or automated contact requests.
-
-## Who it is for
-
-- Freelancers looking for local businesses that match a service offer.
-- Agencies researching verticals, cities, or markets.
-- Consultants validating a target account profile.
-- B2B founders building a repeatable prospect research workflow.
-- Sales teams that want structured, source-aware lead review.
-
-## What it does
-
-- Guides the user through a new client search.
-- Converts answers into a structured search configuration.
-- Stores searches and leads locally in SQLite.
-- Scores leads using explainable dimensions.
-- Tracks lead status, notes, source links, and AI reasoning.
-- Exports leads to CSV, JSON, or Markdown.
-- Generates optional AI-labeled outreach drafts for approved leads.
-
-## What it does not do
-
-- It does not automate mass outreach.
-- It does not scrape private, gated, sensitive, or restricted data.
-- It does not bypass authentication, paywalls, CAPTCHAs, robots.txt, or rate limits.
-- It does not fabricate companies, emails, phone numbers, or source links.
-- It does not recommend contacting leads without enough evidence.
-
-## Stack
-
-- TypeScript
-- Next.js App Router
-- Prisma
-- SQLite
-- Zod
-- Tailwind CSS
-- Provider abstraction for AI models
-
-## Quick Start
-
-```bash
-# 1. Clone and install
-git clone https://github.com/diegomm27/search4clients.git
-cd search4clients
-npm install
-
-# 2. Configure local environment
-cp .env.example .env
-
-# 3. Create the local SQLite database
-npm run db:push
-
-# 4. Load example searches and leads
-npm run db:seed
-
-# 5. Start the dashboard
-npm run dev
-```
-
-Open <http://localhost:3000>.
-
-## Execution Guide
-
-### Prerequisites
-
-- Node.js 20 or newer.
-- npm.
-- A local terminal with permission to run Node and Prisma binaries.
-- Optional: an AI API key. The MVP works with the mock provider when no key is configured.
-
-### First local run
-
-```bash
-git clone https://github.com/diegomm27/search4clients.git
-cd search4clients
-npm install
-cp .env.example .env
-npm run db:push
-npm run db:seed
-npm run dev
-```
-
-Open the dashboard:
+search4clients turns an AI coding assistant into a simple client research workflow:
 
 ```text
-http://localhost:3000
+Fill in a search request file
+        -> run /search4clients scan or npm run scan
+        -> review a short scored lead list
+        -> export HTML, CSV, Markdown, or JSON
 ```
 
-### Windows PowerShell note
+It is inspired by the command-based flow used by projects like `career-ops`: the user keeps a predefined local file, then asks an agent command to process it.
 
-If PowerShell blocks `npm` with an execution policy error, use the `.cmd` shim:
+search4clients is not a spam tool, scraper, email sender, LinkedIn automation tool, or CRM.
 
-```powershell
-npm.cmd install
-npm.cmd run db:push
-npm.cmd run db:seed
-npm.cmd run dev
-```
+## Status
 
-### Environment variables
+Implemented today:
 
-The default `.env` should look like this:
+- `config/search.request.json` request-file workflow
+- Slash-command style agent prompts for Claude, OpenCode, and Gemini
+- `npm run scan` command
+- Local SQLite storage
+- HTML, CSV, Markdown, and JSON exports
+- Next.js review dashboard
+- Demo search provider with sample candidate data
+- Optional OpenAI provider for outreach drafts after lead approval
+
+The current search provider is demo-only. It is useful for testing the workflow, not live prospecting.
+
+## How You Use It
+
+There are two supported paths.
+
+### Option A: Agent Command
+
+Install and set up:
 
 ```bash
-DATABASE_URL="file:./dev.db"
-AI_PROVIDER="mock"
-OPENAI_API_KEY=""
-```
-
-`DATABASE_URL="file:./dev.db"` creates `prisma/dev.db`. That file is local runtime data and is intentionally ignored by git.
-
-### Development commands
-
-```bash
-npm run dev          # Start the Next.js dashboard at localhost:3000
-npm run typecheck    # Run TypeScript checks
-npm run build        # Build for production
-npm run start        # Start the production build
-npm run db:push      # Apply the Prisma schema to SQLite
-npm run db:seed      # Reset demo data and seed example leads
-```
-
-### Production-style local run
-
-```bash
+git clone https://github.com/diegomm27/search4clients.git
+cd search4clients
 npm install
-cp .env.example .env
-npm run db:push
-npm run build
-npm run start
+npm run setup
+npm run doctor
 ```
 
-### Reset local data
+`npm run setup` creates the local request file and prepares the SQLite database. It does not create search results; `npm run scan` does that.
 
-The seed script clears searches, leads, sources, and drafts before loading example data:
+Open your AI coding CLI in the project:
 
 ```bash
-npm run db:seed
+claude
 ```
 
-To start with an empty database, delete `prisma/dev.db` and run:
+or:
 
 ```bash
-npm run db:push
+codex
+opencode
+gemini
 ```
 
-### Common execution issues
+Edit `config/search.request.json`, or ask the agent to fill it in.
 
-- `DATABASE_URL not found`: create `.env` from `.env.example`.
-- `spawn EPERM` on Windows: allow Node/Prisma binaries in your security tool or terminal policy.
-- Port `3000` already in use: run `npm run dev -- -p 3001` and open <http://localhost:3001>.
-- Prisma client missing: run `npm install` or `npx prisma generate`.
+Example request:
 
-## Configure the AI API key
+```json
+{
+  "name": "Spain dental clinics for website redesign",
+  "service_offered": "Website redesign",
+  "industry": "Dental clinics",
+  "country": "Spain",
+  "city": null,
+  "desired_public_data": [
+    "website",
+    "contact_page",
+    "company_description",
+    "source_links"
+  ],
+  "ideal_client_signals": [
+    "old website",
+    "no online booking",
+    "poor mobile design"
+  ],
+  "exclude_signals": [
+    "large chains",
+    "franchises"
+  ],
+  "number_of_results": 25,
+  "minimum_score": 70,
+  "output_format": "dashboard"
+}
+```
 
-Go to `Settings` and choose a provider. The MVP includes a mock local provider so you can run the product without a networked AI service. API keys are used server-side and should not be exposed in client code.
+Then run the agent command:
 
-You can also set:
+```text
+/search4clients scan
+```
+
+The agent should:
+
+1. Read `AGENTS.md`.
+2. Validate or complete `config/search.request.json`.
+3. Run `npm run scan`.
+4. List results with `npm run leads -- --search-id <id>`.
+5. Export HTML with `npm run export -- --search-id <id> --format html --out output/search-<id>.html`.
+
+### Option B: Plain CLI
+
+Edit `config/search.request.json`, then run:
 
 ```bash
-OPENAI_API_KEY="..."
-AI_PROVIDER="openai"
+npm run scan
 ```
 
-The provider interface lives in `lib/ai/provider.ts`, so additional providers can be added without rewriting the product workflow.
+List results:
 
-## Run a search
+```bash
+npm run leads
+npm run leads -- --search-id 1
+```
 
-1. Open `New search`.
-2. Enter the target country, industry, service offered, signals to look for, exclusion signals, result count, and minimum score.
-3. Review the structured configuration on the confirmation page.
-4. Run the search.
-5. Review results in the dashboard or lead tracker.
+Export:
 
-The MVP uses a deterministic demo public-source adapter in `lib/search/demo-source.ts`. This keeps the app runnable locally and gives contributors a safe integration point for real permitted public search providers.
+```bash
+npm run export -- --search-id 1 --format html --out output/search-1.html
+npm run export -- --search-id 1 --format csv --out output/search-1.csv
+npm run export -- --search-id 1 --format markdown --out output/search-1.md
+npm run export -- --search-id 1 --format json --out output/search-1.json
+```
 
-## Scoring
+Open the local review dashboard:
 
-Each lead receives a transparent score from 0 to 100 and a grade:
+```bash
+npm run dev
+```
 
-- `A`: Excellent lead, highly relevant, clear pain point, easy to contact.
-- `B`: Good lead, relevant and worth reviewing.
-- `C`: Possible lead, needs manual validation.
-- `D`: Weak lead.
-- `F`: Not a fit.
+Then open `http://localhost:3000`.
 
-The score is based on:
+## Direct One-Off Search
 
-- ICP fit
-- Problem visibility
-- Contactability
-- Business legitimacy
-- Commercial potential
-- Personalization potential
-- Confidence
+You can still bypass the request file for one-off runs:
 
-Every lead detail page shows the score breakdown and explanation.
+```bash
+npm run search -- --service "Website redesign" --industry "Dental clinics" --country "Spain"
+```
 
-## Privacy
+With optional city:
 
-search4clients is designed around privacy-conscious research:
+```bash
+npm run search -- --service "Website redesign" --industry "Dental clinics" --country "Spain" --city "Madrid"
+```
 
-- Use only publicly available business information.
+## Agent Files
+
+The repository includes command/context files for common agent CLIs:
+
+```text
+AGENTS.md                               canonical project rules
+CLAUDE.md                               Claude Code entry point
+GEMINI.md                               Gemini CLI entry point
+.claude/commands/search4clients.md      Claude slash command
+.opencode/commands/search4clients.md    OpenCode command prompt
+.gemini/commands/search4clients.toml    Gemini command prompt
+```
+
+The intended command is:
+
+```text
+/search4clients scan
+```
+
+Agents should prefer:
+
+```bash
+npm run doctor
+npm run scan
+npm run leads -- --search-id <id>
+npm run export -- --search-id <id> --format html --out output/search-<id>.html
+```
+
+Agents must not invent leads, imply demo data is live research, or send outreach.
+
+## Request File Reference
+
+`config/search.request.json` supports:
+
+```json
+{
+  "name": "Human-readable search name",
+  "service_offered": "What you sell",
+  "industry": "Who you want as clients",
+  "country": "Required country",
+  "city": "Optional city or null",
+  "desired_public_data": ["website", "contact_page", "source_links"],
+  "ideal_client_signals": ["old website", "no online booking"],
+  "exclude_signals": ["large chains", "franchises"],
+  "number_of_results": 25,
+  "minimum_score": 70,
+  "output_format": "dashboard"
+}
+```
+
+Required fields:
+
+- `service_offered`
+- `industry`
+- `country`
+
+Optional fields:
+
+- `city`
+- `desired_public_data`
+- `ideal_client_signals`
+- `exclude_signals`
+- `number_of_results`
+- `minimum_score`
+
+## Outputs
+
+Supported export formats:
+
+- HTML: easy to open and share locally
+- CSV: spreadsheet workflow
+- Markdown: agent-readable report
+- JSON: structured data
+
+Example:
+
+```bash
+npm run export -- --search-id 1 --format html --out output/search-1.html
+```
+
+## Configuration
+
+The main configuration is the local request file:
+
+```text
+config/search.request.json
+```
+
+`npm run setup` creates it from:
+
+```text
+config/search.request.example.json
+```
+
+SQLite always uses the local Prisma database at `prisma/dev.db`.
+
+### Search Provider
+
+The only implemented search provider today is the built-in demo provider.
+
+Future live providers must:
+
+- use permitted public business sources
+- respect robots.txt and website terms
+- avoid gated/private data
+- never bypass anti-bot controls
+- clearly label source and confidence
+
+### AI Provider
+
+The AI provider is optional and currently used only for outreach draft generation after a lead is approved.
+
+Connect it through the local Settings page. API keys are stored locally in `.data/settings.json`, used server-side only, and must never be exposed in browser code or logged in full.
+
+## Safety Rules
+
+- Human review is required before outreach.
+- Demo data must be labeled as demo data.
+- Public business data only.
 - Prefer company-level data over personal data.
-- Respect website terms and robots.txt where applicable.
-- Avoid collecting unnecessary personal data.
-- Require human review before outreach.
-- Let users delete leads and search history through the local database.
-- Clearly label outreach drafts as AI-generated.
+- Unknown fields stay empty instead of being guessed.
+- Source links must not be fabricated.
+- Exports are user-controlled.
+- Outreach drafts are never sent automatically.
 
-## Export
-
-Use the dashboard export links or call:
+## Project Structure
 
 ```text
-/api/export?format=csv
-/api/export?format=json
-/api/export?format=markdown
+app/                         Next.js local review dashboard
+components/                  Shared UI components
+config/                      Search request examples and local request file
+lib/ai/                      AI provider abstraction
+lib/evaluate/                Lead evaluation logic
+lib/export/                  HTML, CSV, Markdown exporters
+lib/leads/                   Lead display/status helpers
+lib/scoring/                 Explainable scoring
+lib/search/                  Search schemas and orchestration
+lib/storage/                 Prisma and JSON helpers
+prisma/schema.prisma         SQLite schema
+scripts/                     CLI commands
+AGENTS.md                    Canonical agent instructions
+CLAUDE.md                    Claude Code instructions
+GEMINI.md                    Gemini CLI instructions
 ```
 
-You can scope exports to one search:
+## Development
 
-```text
-/api/export?format=csv&searchId=1
+Useful commands:
+
+```bash
+npm run setup
+npm run doctor
+npm run scan
+npm run typecheck
+npm run build
 ```
 
-## Project structure
+`npm run lint` is present for Next.js, but ESLint must be configured before it can run non-interactively in this repository.
 
-```text
-app/                 Next.js pages and API routes
-components/          Reusable UI components
-config/              Example search templates
-docs/                Architecture and contributor notes
-lib/ai/              AI provider abstraction and settings
-lib/evaluate/        Lead evaluation logic
-lib/export/          CSV and Markdown exporters
-lib/privacy/         Privacy guidance
-lib/prompts/         Prompt templates
-lib/scoring/         Transparent scoring system
-lib/search/          Guided search and discovery orchestration
-lib/storage/         Prisma client
-prisma/              SQLite schema
-scripts/             Seed scripts
-```
+## Contributing
 
-## Contribute
+Good contributions:
 
-Good first contributions:
+- improve the command/request-file workflow
+- improve review UX
+- improve local-first storage and exports
+- add safe provider abstractions
+- add validation and scoring tests
 
-- Add a permitted public search provider adapter.
-- Add Playwright-based website analysis that respects robots.txt and rate limits.
-- Improve duplicate detection and merge workflows.
-- Add CLI commands for `init`, `scan`, `evaluate`, `enrich`, `export`, `dedup`, and `dashboard`.
-- Add tests for scoring, exports, and config validation.
+Avoid:
 
-Keep the product human-in-the-loop. Do not add automatic outreach sending.
+- automatic outreach sending
+- browser automation for LinkedIn or email
+- mass-contact workflows
+- authentication, billing, or multi-user accounts
+- complex CRM pipelines
+
+## License
+
+MIT

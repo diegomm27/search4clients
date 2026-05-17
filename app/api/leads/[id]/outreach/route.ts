@@ -8,13 +8,18 @@ export async function POST(_request: Request, { params }: { params: { id: string
     redirect(`/leads/${params.id}`);
   }
 
-  const provider = getAIProvider();
-  const draft = await provider.generateOutreachDraft({
-    companyName: lead.company_name,
-    serviceOffered: lead.search?.service_offered || lead.suggested_offer || "the discussed service",
-    reasonForFit: lead.reason_for_fit,
-    outreachAngle: lead.suggested_outreach_angle
-  });
+  const provider = await getAIProvider();
+  let draft: { subject: string; body: string };
+  try {
+    draft = await provider.generateOutreachDraft({
+      companyName: lead.company_name,
+      serviceOffered: lead.search?.service_offered || lead.suggested_offer || "the discussed service",
+      reasonForFit: lead.reason_for_fit,
+      outreachAngle: lead.suggested_outreach_angle
+    });
+  } catch {
+    redirect(`/leads/${params.id}?error=${encodeURIComponent("Could not generate the outreach draft. Check your API key or switch back to demo provider.")}`);
+  }
 
   await prisma.outreachDraft.create({
     data: {

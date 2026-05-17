@@ -1,7 +1,12 @@
 node_modules
 .next
-.env
 .data
+output
+*.log
+
+.env*
+
+config/search.request.json
 prisma/dev.db
 prisma/dev.db-journal
 tsconfig.tsbuildinfo

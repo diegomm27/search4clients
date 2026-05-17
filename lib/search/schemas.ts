@@ -30,6 +30,18 @@ export const desiredPublicData = [
   "suggested_outreach_angle"
 ] as const;
 
+export const defaultDesiredPublicData = [
+  "company_name",
+  "website",
+  "contact_page",
+  "city",
+  "country",
+  "industry",
+  "company_description",
+  "source_links",
+  "reason_for_fit"
+] as const;
+
 export const searchConfigSchema = z.object({
   name: z.string().min(2),
   country: z.string().min(2),
@@ -41,15 +53,7 @@ export const searchConfigSchema = z.object({
   target_client_type: z.string().nullable().optional(),
   ideal_client_signals: z.array(z.string()).default([]),
   exclude_signals: z.array(z.string()).default([]),
-  desired_public_data: z.array(z.enum(desiredPublicData)).default([
-    "company_name",
-    "website",
-    "contact_page",
-    "public_email",
-    "public_phone",
-    "source_links",
-    "reason_for_fit"
-  ]),
+  desired_public_data: z.array(z.enum(desiredPublicData)).default([...defaultDesiredPublicData]),
   number_of_results: z.coerce.number().int().min(1).max(100).default(25),
   minimum_score: z.coerce.number().int().min(0).max(100).default(70),
   output_format: z.enum(["table", "csv", "json", "markdown", "sqlite", "dashboard"]).default("table"),
