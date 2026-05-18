@@ -20,6 +20,8 @@ type ScanRequest = {
   delayMs?: number;
   /** When true and country has sub-regions, scan each region separately and union results */
   batchByRegion?: boolean;
+  /** Bounding boxes for sub-regions: [minLat, minLon, maxLat, maxLon] */
+  regionBboxes?: Record<string, [number, number, number, number]>;
 };
 
 /** Region mapping for large countries — used for R5 region batching */
@@ -46,16 +48,19 @@ export async function runScan(request: ScanRequest): Promise<ScanResult> {
     console.log("No enabled sources match this country/category. Running with defaults.");
   }
 
+  // Load region bounding boxes if available
+  const bboxes = loadRegionBboxes(request.countryIso);
+
   // Check if we should batch by sub-region
   const shouldBatch = request.batchByRegion && !request.region && !request.city;
   const subRegions = shouldBatch ? getSubRegions(request.countryIso) : null;
 
   if (shouldBatch && subRegions && subRegions.length > 0) {
     console.log(`Batching by ${subRegions.length} sub-regions for ${request.country}...`);
-    return runBatchScan(sources, matched, request, subRegions);
+    return runBatchScan(sources, matched, { ...request, regionBboxes: bboxes }, subRegions);
   }
 
-  return runSingleScan(sources, matched, request);
+  return runSingleScan(sources, matched, { ...request, regionBboxes: bboxes });
 }
 
 async function runSingleScan(sources: SourceEntry[], matched: SourceEntry[], request: ScanRequest): Promise<ScanResult> {
@@ -122,6 +127,17 @@ function getSubRegions(countryIso: string): string[] {
   return regionMapping[countryIso] || defaultRegions[countryIso] || [];
 }
 
+/** Load bounding boxes for sub-regions of a country */
+function loadRegionBboxes(countryIso: string): Record<string, [number, number, number, number]> {
+  try {
+    const raw = readFileSync("config/region-bboxes.json", "utf8");
+    const data = JSON.parse(raw);
+    return data.regions[countryIso] || {};
+  } catch {
+    return {};
+  }
+}
+
 function createProviders(sources: SourceEntry[], request: ScanRequest) {
   const providers: Array<{ id: string; provider: { scan(request: any, opts: any): Promise<RawRecord[]> } }> = [];
 
@@ -177,6 +193,7 @@ function buildProviderRequest(request: ScanRequest, sources: SourceEntry[]) {
     countryIso: request.countryIso,
     region: request.region,
     city: request.city,
+    regionBboxes: request.regionBboxes,
     osmTags: category?.osm_tags || [["shop", "books"]],
     placesType: hasPlaces ? (category?.places_type || null) : null,
     placesKeyword: hasPlaces ? (category?.places_keyword || request.industry) : null

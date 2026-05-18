@@ -2,6 +2,7 @@ import { readFile, writeFile, mkdir } from "fs/promises";
 import { existsSync } from "fs";
 import { readFileSync } from "fs";
 import path from "path";
+import * as cheerio from "cheerio";
 import type { RawRecord, ProviderRequest, ScanOptions, ScanProvider } from "@/lib/scan/types";
 
 const OVERPASS_URL = "https://overpass-api.de/api/interpreter";
@@ -24,16 +25,16 @@ export class OverpassProvider implements ScanProvider {
       return [];
     }
 
-    const tagQuery = osmTags.map(([k, v]) => `["${k}"="${v}"];`).join("");
+    const tagQuery = osmTags.map(([k, v]) => `node["${k}"="${v}"]`).join("");
 
-    // Build area filter: country-level area, then layer city/region on top
+    // Build area filter: bounding box > city > region > country
     const regionVal = region ?? undefined;
-    let areaFilter = this.buildAreaFilter(city, regionVal, countryIso);
+    let areaFilter = this.buildAreaFilter(tagQuery, city, regionVal, countryIso, request.regionBboxes);
 
     // Use nwr (node/way/relation) + out center to get coordinates from all element types
     const query = `
       [out:json][timeout:60];
-      ${areaFilter ? `(${tagQuery}${areaFilter});` : `${tagQuery}nwr();`};
+      ${areaFilter ? `${tagQuery}${areaFilter}` : `${tagQuery}nwr();`}
       out center qt 5000;
     `.replace(/\s+/g, " ").trim();
 
@@ -51,7 +52,10 @@ export class OverpassProvider implements ScanProvider {
     const resp = await fetch(OVERPASS_URL, {
       method: "POST",
       body: `data=${encodeURIComponent(query)}`,
-      headers: { "Content-Type": "application/x-www-form-urlencoded" }
+      headers: {
+        "Content-Type": "application/x-www-form-urlencoded",
+        "User-Agent": "search4clients/1.0"
+      }
     });
 
     if (!resp.ok) {
@@ -59,7 +63,15 @@ export class OverpassProvider implements ScanProvider {
       return [];
     }
 
-    const data = (await resp.json()) as Record<string, unknown>;
+    const contentType = resp.headers.get("content-type") || "";
+    let data: Record<string, unknown>;
+
+    if (contentType.includes("application/json") || contentType.includes("text/json")) {
+      data = (await resp.json()) as Record<string, unknown>;
+    } else {
+      const xmlText = await resp.text();
+      data = this.parseXmlResponse(xmlText);
+    }
 
     if (opts.cacheDir) {
       await mkdir(opts.cacheDir, { recursive: true });
@@ -71,21 +83,42 @@ export class OverpassProvider implements ScanProvider {
 
   /**
    * Build area filter for Overpass QL.
-   * Priority: city (admin_level=8) > region (admin_level=4) > country (ISO3166-1 admin_level=2).
-   * Areas are nested so the query searches within the smallest valid area.
+   * Uses bounding boxes because OSM area name lookups fail for many regions.
+   * Returns only the bbox portion with trailing semicolon (tagQuery is prepended in scan()).
    */
-  private buildAreaFilter(city: string | null | undefined, region: string | null | undefined, countryIso: string): string {
-    if (city) {
-      return `(area["name"="${city}"]["admin_level"="8"];);`;
-    }
-    if (region) {
-      return `(area["name"="${region}"]["admin_level"="4"];);`;
+  private buildAreaFilter(
+    tagQuery: string,
+    city: string | null | undefined,
+    region: string | null | undefined,
+    countryIso: string,
+    regionBboxes?: Record<string, [number, number, number, number]>
+  ): string {
+    if (region && regionBboxes?.[region]) {
+      const [minLat, minLon, maxLat, maxLon] = regionBboxes[region];
+      return `(${minLat},${minLon},${maxLat},${maxLon});`;
     }
     if (countryIso) {
-      // Use ISO3166-1 for country-level area lookups (admin_level=2)
-      return `(area["ISO3166-1"="${countryIso}"]["admin_level"="2"]->.a; nwr(area.a););`;
+      return `(${this.getCountryBbox(countryIso)});`;
     }
     return "";
+  }
+
+  /** Return a bounding box string for a country ISO code. */
+  private getCountryBbox(iso: string): string {
+    // Approximate bounding boxes for major countries
+    const bboxes: Record<string, string> = {
+      ES: "35.5,-11.5,44.0,4.5",
+      DE: "47.0,5.5,55.1,15.2",
+      FR: "42.0,-5.2,51.1,8.2",
+      IT: "36.5,6.3,47.1,18.6",
+      US: "24.0,-125.0,49.0,-66.0",
+      GB: "49.9,-8.5,59.4,2.0",
+      BR: "-33.8,-73.9,5.3,29.4",
+      AR: "-55.1,-73.7,21.8,69.1",
+      CA: "41.7,-141.0,83.1,-52.6",
+      JP: "24.0,122.0,46.0,146.0",
+    };
+    return bboxes[iso] || "-90,-180,90,180";
   }
 
   private parseResponse(data: Record<string, unknown>): RawRecord[] {
@@ -145,5 +178,37 @@ export class OverpassProvider implements ScanProvider {
     }
 
     return records;
+  }
+
+  /**
+   * Parse Overpass XML response and convert to JSON format expected by parseResponse.
+   * Overpass API returns XML by default even when [out:json] is in the query.
+   */
+  private parseXmlResponse(xmlText: string): Record<string, unknown> {
+    const $ = cheerio.load(xmlText, { xmlMode: true });
+    const elements: Array<Record<string, unknown>> = [];
+
+    $("node, way").each((_i, el) => {
+      const type = $(el).attr("type") || $(el).get(0)?.name || "node";
+      const id = Number($(el).attr("id") || 0);
+      const lat = $(el).attr("lat");
+      const lon = $(el).attr("lon");
+      const tags: Record<string, string> = {};
+
+      $(el).find("tag").each((_ti, tag) => {
+        const k = $(tag).attr("k");
+        const v = $(tag).attr("v");
+        if (k && v !== undefined) {
+          tags[k] = v;
+        }
+      });
+
+      const elementObj: Record<string, unknown> = { type, id, tags };
+      if (lat) elementObj.lat = Number(lat);
+      if (lon) elementObj.lon = Number(lon);
+      elements.push(elementObj);
+    });
+
+    return { elements };
   }
 }
