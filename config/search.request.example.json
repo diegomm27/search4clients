@@ -18,7 +18,5 @@
   "exclude_signals": [
     "large chains",
     "franchises"
-  ],
-  "max_results": null,
-  "output_format": "dashboard"
+  ]
 }

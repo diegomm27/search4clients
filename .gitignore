@@ -1,6 +1,4 @@
 node_modules
-.next
-.data
 output
 *.log
 
@@ -8,6 +6,4 @@ output
 
 config/search.request.json
 config/candidates.json
-prisma/dev.db
-prisma/dev.db-journal
 tsconfig.tsbuildinfo

@@ -1,106 +1,71 @@
 # search4clients
 
-Plug-and-play, command-based B2B client research for AI coding agents.
+Find real potential clients for your product or service — with an AI coding agent.
 
-search4clients has one primary flow:
+You describe who you want to sell to. Your agent (Claude, Codex, Gemini, or
+OpenCode) researches the real web, finds matching companies, and collects their
+public contact details. search4clients then scores and ranks every company by
+fit and writes a clean report you can review and act on.
+
+It is not a scraper. It is not a CRM. It does not send outreach. It produces a
+reviewed, ranked list of real businesses — nothing more, nothing less.
+
+## How it works
 
 ```text
-Edit config/search.request.json
-        -> run /search4clients scan in your agent
-        -> agent researches the web -> config/candidates.json
-        -> npm run scan scores and ranks the candidates
-        -> get output/latest.html, output/latest.csv, output/latest.md, output/latest.json
+config/search.request.json   ->  you describe your ideal client
+        |
+        v
+/search4clients (in your agent) ->  agent researches the web
+        |
+        v
+config/candidates.json       ->  real companies the agent found
+        |
+        v
+npm run scan                 ->  scores and ranks every company
+        |
+        v
+output/latest.html           ->  your ranked list of potential clients
 ```
 
-It is not a web app first. It is not a CRM. It is not an outreach automation tool.
+## Requirements
 
-## How It Works
+- [Node.js](https://nodejs.org) 18.17 or newer
+- One AI coding agent CLI installed: [Claude Code](https://claude.com/claude-code),
+  Codex, [Gemini CLI](https://github.com/google-gemini/gemini-cli), or OpenCode
 
-The agent does the research; the npm scripts score and export.
+Check Node:
 
-- You describe what you want in `config/search.request.json`.
-- Your AI agent (claude, codex, opencode, gemini) reads that file, **researches
-  the real web** with its own search tools, and writes the companies it finds
-  to `config/candidates.json`.
-- `npm run scan` scores and ranks every candidate, then writes the report files.
+```bash
+node --version
+```
 
-## What Works Today
+## Quick start
 
-- One request file: `config/search.request.json`
-- One command: `/search4clients scan`
-- Agent-driven live web research into `config/candidates.json`
-- File-based outputs in `output/`
-- No SQLite, database, or API key required for the agent command flow
-- HTML, CSV, Markdown, and JSON output
-- Optional local dashboard for manual review
-
-## Install
+### 1. Get the project
 
 ```bash
 git clone https://github.com/diegomm27/search4clients.git
 cd search4clients
 npm install
+```
+
+### 2. Create your request file
+
+```bash
 npm run setup
-npm run doctor
 ```
 
-`npm run setup` only creates the local request file from the template:
-
-```text
-config/search.request.example.json -> config/search.request.json
-```
-
-It does not create a database and it does not run a scan.
-
-## Use With An Agent
-
-Open your agent CLI in this repo:
-
-```bash
-claude
-```
-
-or:
-
-```bash
-codex
-opencode
-gemini
-```
-
-Then run:
-
-```text
-/search4clients scan
-```
-
-The agent should:
-
-1. Read `AGENTS.md`.
-2. Read or create `config/search.request.json`.
-3. Ask only for missing required fields.
-4. Research the web for real companies that match the request.
-5. Write the findings to `config/candidates.json` (see `config/candidates.example.json`).
-6. Run `npm run scan` to score and rank them.
-7. Run `npm run leads` and summarize the generated files in `output/`.
-
-## Request File
-
-Example:
+This copies `config/search.request.example.json` to
+`config/search.request.json`. Open it and describe your ideal client:
 
 ```json
 {
-  "name": "Spain dental clinics for website redesign",
+  "name": "Madrid dental clinics for website redesign",
   "service_offered": "Website redesign",
   "industry": "Dental clinics",
   "country": "Spain",
-  "city": null,
-  "desired_public_data": [
-    "website",
-    "contact_page",
-    "company_description",
-    "source_links"
-  ],
+  "city": "Madrid",
   "ideal_client_signals": [
     "old website",
     "no online booking",
@@ -113,120 +78,134 @@ Example:
 }
 ```
 
-Required:
+Only three fields are required: `service_offered`, `industry`, and `country`.
+Everything else is optional. `city` narrows the search to one city; leave it
+out to search the whole country.
 
-- `service_offered`
-- `industry`
-- `country`
-
-Optional:
-
-- `city`
-- `desired_public_data`
-- `ideal_client_signals`
-- `exclude_signals`
-
-Every matching company is returned, ranked by fit score. There is no minimum-score cutoff: lower-scoring companies still appear so you can review the full list.
-
-## Run Without An Agent
-
-`npm run scan` needs a `config/candidates.json` file. The agent writes it from
-real web research using the `/search4clients scan` command.
-
-Write `config/candidates.json` (see `config/candidates.example.json`) and run:
+### 3. Check the setup
 
 ```bash
-npm run scan
+npm run doctor
 ```
 
-List the latest results:
+This confirms Node, the request file, and the candidate file are in order.
+
+### 4. Run the research with your agent
+
+Open your agent in this folder:
+
+```bash
+claude
+```
+
+(or `codex`, `gemini`, `opencode`)
+
+Then run the command:
+
+```text
+/search4clients
+```
+
+The agent will:
+
+1. Read your `config/search.request.json`.
+2. Ask for any missing required details.
+3. Research the public web for real companies that match.
+4. Write everything it finds to `config/candidates.json`.
+5. Run `npm run scan` to score and rank them.
+6. Show you the results in `output/`.
+
+### 5. Get your list of clients
+
+The scan writes a ranked report. Open it in your browser:
+
+```text
+output/latest.html
+```
+
+Or print the ranked list in your terminal:
 
 ```bash
 npm run leads
 ```
 
-Export from the latest scan:
+That's it. You now have a reviewed, scored list of potential clients ready for
+manual outreach.
 
-```bash
-npm run export -- --format html --out output/leads.html
-npm run export -- --format csv --out output/leads.csv
-npm run export -- --format markdown --out output/leads.md
-npm run export -- --format json --out output/leads.json
-```
+## The request file
 
-Edit the request file in your text editor or ask your agent to update it, then run the agent command again.
+| Field | Required | Description |
+| --- | --- | --- |
+| `service_offered` | yes | What you sell |
+| `industry` | yes | The kind of client you want |
+| `country` | yes | Country to search |
+| `city` | no | Narrow the search to one city |
+| `name` | no | A label for this search |
+| `ideal_client_signals` | no | Buying signals that make a company a better fit |
+| `exclude_signals` | no | Signals that disqualify a company |
+| `desired_public_data` | no | Extra public fields to collect per company |
+
+Every matching company is returned, ranked by fit score. Lower-scoring
+companies still appear so you can review the full list yourself.
 
 ## Outputs
 
-Every scan writes:
+Each scan writes timestamped files plus a `latest` copy of each:
 
 ```text
-output/search-<timestamp>.html
-output/search-<timestamp>.csv
-output/search-<timestamp>.md
-output/search-<timestamp>.json
-output/latest.json
-output/latest.html
+output/search-<timestamp>.html   human-readable report
+output/search-<timestamp>.csv    for spreadsheets
+output/search-<timestamp>.md     for agents and docs
+output/search-<timestamp>.json   full structured data
+output/latest.html               most recent run
 output/latest.csv
 output/latest.md
+output/latest.json
 ```
 
-HTML is the default human-readable report. CSV is for spreadsheets. Markdown is agent-readable. JSON is the full structured scan output.
-
-## Optional Dashboard
-
-The command flow does not require SQLite.
-
-The repository still includes a local Next.js dashboard for manual review experiments:
+Re-export the latest scan in any format:
 
 ```bash
-npm run dev
+npm run export -- --format html --out output/leads.html
+npm run export -- --format csv  --out output/leads.csv
 ```
 
-Open `http://localhost:3000`.
+## Commands
 
-The dashboard uses Prisma/SQLite internally. It is optional and not part of the primary agent-command flow.
-
-## Agent Files
-
-```text
-AGENTS.md                               canonical agent rules
-CLAUDE.md                               Claude Code entry point
-GEMINI.md                               Gemini CLI entry point
-.claude/commands/search4clients.md      Claude slash command
-.opencode/commands/search4clients.md    OpenCode command prompt
-.gemini/commands/search4clients.toml    Gemini command prompt
+```bash
+npm run setup    # create config/search.request.json from the template
+npm run doctor   # check your local setup
+npm run scan     # score config/candidates.json and write output/
+npm run leads    # print the ranked list
+npm run export   # re-export the latest scan
 ```
 
-## Safety Rules
+## Safety
 
-- Public business data only
-- No fabricated companies, contacts, phone numbers, emails, or source links
-- No automatic outreach sending
+search4clients is built to give you trustworthy leads, not shortcuts:
+
+- Only public, company-level business data is collected
+- No fabricated companies, contacts, emails, phones, or source links
+- No automatic outreach — every message is yours to write and send
 - No mass email or LinkedIn automation
-- No bypassing robots.txt, paywalls, authentication, CAPTCHAs, or rate limits
-- Human review before outreach
+- No bypassing robots.txt, paywalls, logins, CAPTCHAs, or rate limits
+- You review the list before taking any action
 
-## Project Structure
+## Project structure
 
 ```text
-config/search.request.example.json      request-file template
-scripts/search.ts                       scan command
-scripts/leads.ts                        latest-result summary
-scripts/export.ts                       output converter
-lib/search/                             candidate schemas and loader
-lib/evaluate/                           lead evaluation
-lib/export/                             HTML/CSV/Markdown exporters
-app/                                    optional local dashboard
-prisma/                                 optional dashboard storage schema
+config/search.request.example.json   request-file template
+config/candidates.example.json        candidate-file shape
+scripts/                              setup, doctor, scan, leads, export
+lib/                                  scoring, evaluation, exporters, schemas
+AGENTS.md                             canonical agent instructions
+.claude/ .gemini/ .opencode/          per-agent command definitions
 ```
 
 ## Development
 
 ```bash
 npm run typecheck
-npm run lint
-npm run build
 ```
 
 ## License

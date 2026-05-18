@@ -25,15 +25,16 @@ npm scripts score and export.
    `config/candidates.json`.
 8. Run `npm run leads`, then summarize generated files in `output/`.
 
-Do not use SQLite for the primary flow. `npm run scan` writes files directly.
+`npm run scan` reads `config/search.request.json` and `config/candidates.json`
+and writes report files directly to `output/`. No database is involved.
 
 ## Commands
 
 ```bash
-npm run setup
-npm run doctor
-npm run scan
-npm run leads
+npm run setup    # create config/search.request.json from the template
+npm run doctor   # check the local setup
+npm run scan     # score config/candidates.json, write output/
+npm run leads    # print the ranked list
 npm run export -- --format html --out output/leads.html
 ```
 
@@ -69,6 +70,4 @@ output/latest.json
 
 ```bash
 npm run typecheck
-npm run lint
-npm run build
 ```

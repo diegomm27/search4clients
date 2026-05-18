@@ -1,18 +1,5 @@
 import { z } from "zod";
 
-export const leadStatuses = [
-  "new",
-  "reviewed",
-  "approved",
-  "rejected",
-  "contacted",
-  "replied",
-  "meeting_booked",
-  "client_won",
-  "client_lost",
-  "do_not_contact"
-] as const;
-
 export const desiredPublicData = [
   "company_name",
   "website",
@@ -54,11 +41,7 @@ export const searchConfigSchema = z.object({
   ideal_client_signals: z.array(z.string()).default([]),
   exclude_signals: z.array(z.string()).default([]),
   desired_public_data: z.array(z.enum(desiredPublicData)).default([...defaultDesiredPublicData]),
-  max_results: z.coerce.number().int().min(1).nullable().optional(),
-  output_format: z.enum(["table", "csv", "json", "markdown", "sqlite", "dashboard"]).default("table"),
   notes: z.string().optional()
 });
 
 export type SearchConfig = z.infer<typeof searchConfigSchema>;
-
-export const leadStatusSchema = z.enum(leadStatuses);

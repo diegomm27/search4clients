@@ -31,31 +31,7 @@ export function stringArg(args: Record<string, string | boolean | string[]>, key
   return undefined;
 }
 
-export function listArg(args: Record<string, string | boolean | string[]>, key: string) {
-  const value = args[key];
-  const values = Array.isArray(value) ? value : typeof value === "string" ? [value] : [];
-  return values
-    .flatMap((item) => item.split(","))
-    .map((item) => item.trim())
-    .filter(Boolean);
-}
-
 export function numberArg(args: Record<string, string | boolean | string[]>, key: string, fallback: number) {
   const value = Number(stringArg(args, key));
   return Number.isFinite(value) ? value : fallback;
-}
-
-export function printHelp(title: string, lines: string[]) {
-  console.log(title);
-  console.log("");
-  for (const line of lines) console.log(line);
-}
-
-export async function disconnectPrisma() {
-  try {
-    const { prisma } = await import("../lib/storage/prisma");
-    await prisma.$disconnect();
-  } catch {
-    // Nothing to disconnect.
-  }
 }
