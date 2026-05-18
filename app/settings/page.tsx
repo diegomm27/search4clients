@@ -9,7 +9,7 @@ export default async function SettingsPage({ searchParams }: { searchParams: { e
     <div className="max-w-3xl space-y-6">
       <div>
         <h1 className="text-3xl font-semibold">Settings</h1>
-        <p className="mt-2 text-sm text-moss">Connect an AI provider for outreach drafts. Search results still use demo data until a permitted live search provider is added.</p>
+        <p className="mt-2 text-sm text-moss">Connect an AI provider for outreach drafts.</p>
       </div>
       {searchParams.error && (
         <div className="rounded-md border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">{searchParams.error}</div>
@@ -17,13 +17,13 @@ export default async function SettingsPage({ searchParams }: { searchParams: { e
       <Card>
         <form action="/api/settings" method="post" className="space-y-5">
           <div className="rounded-md border border-line bg-paper p-4">
-            <p className="text-sm font-medium">Search provider: Demo data</p>
-            <p className="mt-1 text-sm text-moss">This app does not run live web research yet. API keys below only affect AI outreach draft generation.</p>
+            <p className="text-sm font-medium">Search research</p>
+            <p className="mt-1 text-sm text-moss">Agent web research is written to config/candidates.json. API keys below only affect AI outreach draft generation.</p>
           </div>
           <label className="block">
             <span className="mb-2 block text-sm font-medium">AI provider for drafts</span>
             <Select name="provider" defaultValue={settings.provider}>
-              <option value="mock">Demo provider</option>
+              <option value="mock">Mock provider</option>
               <option value="openai">OpenAI API</option>
             </Select>
           </label>

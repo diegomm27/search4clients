@@ -1,10 +1,10 @@
 import { prisma } from "@/lib/storage/prisma";
 import { evaluateCandidate } from "@/lib/evaluate/evaluate";
 import { encodeJson } from "@/lib/storage/json";
-import { discoverDemoCandidates } from "./demo-source";
+import { loadResearchCandidates } from "./candidates";
 import type { SearchConfig } from "./schemas";
 
-export async function runSearch(config: SearchConfig) {
+export async function runSearch(config: SearchConfig, candidatesPath: string) {
   const search = await prisma.search.create({
     data: {
       name: config.name,
@@ -18,18 +18,17 @@ export async function runSearch(config: SearchConfig) {
       ideal_client_signals: encodeJson(config.ideal_client_signals),
       exclude_signals: encodeJson(config.exclude_signals),
       desired_public_data: encodeJson(config.desired_public_data),
-      number_of_results: config.number_of_results,
-      minimum_score: config.minimum_score,
+      max_results: config.max_results ?? null,
       output_format: config.output_format,
       status: "running",
       notes: config.notes
     }
   });
 
-  const candidates = await discoverDemoCandidates(config);
+  const candidates = await loadResearchCandidates(candidatesPath);
   const evaluated = candidates
     .map((candidate) => evaluateCandidate(config, candidate))
-    .filter((lead) => lead.score >= config.minimum_score);
+    .sort((a, b) => b.score - a.score);
 
   for (const lead of evaluated) {
     const savedLead = await prisma.lead.create({

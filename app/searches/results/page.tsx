@@ -1,7 +1,6 @@
 import Link from "next/link";
 import { prisma } from "@/lib/storage/prisma";
 import { LeadCardGrid } from "@/components/lead-card";
-import { DemoModeBanner } from "@/components/demo-mode-banner";
 
 export const dynamic = "force-dynamic";
 
@@ -22,7 +21,6 @@ export default async function SearchResultsPage({ searchParams }: { searchParams
 
   return (
     <div className="space-y-6">
-      <DemoModeBanner />
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div>
           <h1 className="text-3xl font-semibold">{search.name}</h1>

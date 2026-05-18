@@ -18,7 +18,7 @@ export async function POST(_request: Request, { params }: { params: { id: string
       outreachAngle: lead.suggested_outreach_angle
     });
   } catch {
-    redirect(`/leads/${params.id}?error=${encodeURIComponent("Could not generate the outreach draft. Check your API key or switch back to demo provider.")}`);
+    redirect(`/leads/${params.id}?error=${encodeURIComponent("Could not generate the outreach draft. Check your API key.")}`);
   }
 
   await prisma.outreachDraft.create({

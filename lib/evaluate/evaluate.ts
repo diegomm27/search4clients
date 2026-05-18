@@ -1,5 +1,5 @@
 import { scoreLead } from "@/lib/scoring/scoring";
-import type { CandidateCompany } from "@/lib/search/demo-source";
+import type { CandidateCompany } from "@/lib/search/candidates";
 import type { SearchConfig } from "@/lib/search/schemas";
 
 export function evaluateCandidate(config: SearchConfig, candidate: CandidateCompany) {

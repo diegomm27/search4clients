@@ -1,20 +1,32 @@
-description = "Find potential B2B clients with the local search4clients workflow"
+description = "Find real potential B2B clients by researching the web, then score and export them"
 prompt = """
-Read AGENTS.md first.
-
-This is a command-based workflow.
+Read AGENTS.md first. This is a command-based workflow.
 
 1. Check config/search.request.json.
 2. If missing, copy config/search.request.example.json or run npm run setup.
 3. Ask only for missing required details:
    - service or product offered
    - target client type or industry
-   - country
-4. City is optional.
-5. Update config/search.request.json.
-6. Run npm run scan.
-7. Run npm run leads -- --search-id <id>.
-8. Export with npm run export -- --search-id <id> --format html --out output/search-<id>.html unless the user requests CSV/Markdown/JSON.
+   - country (city is optional)
+4. Update config/search.request.json.
 
-Never send outreach automatically. Never invent companies, contacts, or source links. Demo mode is sample data only.
+5. Research the web using your own search tools. Find real companies that match
+   the request: the right industry in the country/city, showing the
+   ideal_client_signals, not matching exclude_signals. For each company, gather
+   only public company-level data (website, contact page, public email/phone,
+   LinkedIn company page, short description) and the source URLs you used.
+   Return every genuine match; do not pre-filter by quality.
+
+6. Write config/candidates.json using the exact shape in
+   config/candidates.example.json. Every field must come from real research.
+
+7. Run npm run scan.
+8. Run npm run leads.
+9. Point the user to output/latest.html and the other files in output/.
+
+Guardrails:
+- Use only public business data. Never invent companies, contacts, or source
+  links. Leave unknown fields null or empty.
+- Do not bypass robots.txt, paywalls, logins, CAPTCHAs, or rate limits.
+- Never send outreach automatically.
 """

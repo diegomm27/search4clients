@@ -1,24 +1,30 @@
 # search4clients
 
-Find potential B2B clients through the local search4clients workflow.
+Find real potential B2B clients by researching the web, then score and export them.
 
-Read `AGENTS.md`. This is a command-based workflow.
+Read `AGENTS.md` first. This is a command-based workflow.
 
-Default mode:
+## Workflow
 
-```bash
-npm run scan
-```
+1. Check `config/search.request.json`. If missing, copy
+   `config/search.request.example.json` or run `npm run setup`.
+2. Ask only for missing required fields: service, industry/client type, and
+   country. City is optional. Update `config/search.request.json`.
 
-`npm run scan` reads `config/search.request.json`. If that file is missing, copy `config/search.request.example.json` or run `npm run setup`.
+3. Research the web with your own search tools. Find real companies that match
+   the request - the right `industry` in the `country`/`city`, showing the
+   `ideal_client_signals`, not matching `exclude_signals`. For each, gather only
+   public company-level data and the source URLs you used.
 
-After the scan, list and export:
+4. Write `config/candidates.json` using the shape in
+   `config/candidates.example.json`. Every field must come from real research.
+5. Run `npm run scan`, then `npm run leads`, then point the user to
+   `output/latest.html`. Optionally
+   `npm run export -- --format html --out output/leads.html`.
 
-```bash
-npm run leads -- --search-id <id>
-npm run export -- --search-id <id> --format html --out output/search-<id>.html
-```
+## Guardrails
 
-Ask only for missing required fields: service, industry/client type, and country. City is optional.
-
-Never send outreach automatically. Never invent companies, contacts, or sources. Demo mode is not live research.
+- Use only public business data. Never invent companies, contacts, or source
+  links - leave unknown fields `null` or empty.
+- Do not bypass robots.txt, paywalls, logins, CAPTCHAs, or rate limits.
+- Never send outreach automatically.

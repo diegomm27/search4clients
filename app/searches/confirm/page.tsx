@@ -25,8 +25,7 @@ function friendlySearchError(path: string, message: string) {
   if (path === "service_offered") return "Please describe what you sell.";
   if (path === "industry") return "Please describe who you want as clients.";
   if (path === "country") return "Please enter a country.";
-  if (path === "minimum_score") return "Minimum score must be between 0 and 100.";
-  if (path === "number_of_results") return "Result count must be between 1 and 100.";
+  if (path === "max_results") return "Maximum results must be a positive whole number.";
   return message;
 }
 
@@ -65,8 +64,7 @@ export default function ConfirmSearchPage({ searchParams }: { searchParams: Reco
     ideal_client_signals: commaList(value("ideal_client_signals") ?? null),
     exclude_signals: commaList(value("exclude_signals") ?? null),
     desired_public_data: requestedPublicData,
-    number_of_results: value("number_of_results") || 25,
-    minimum_score: value("minimum_score") || 70,
+    max_results: value("max_results") || null,
     output_format: "dashboard"
   });
 
@@ -120,8 +118,8 @@ export default function ConfirmSearchPage({ searchParams }: { searchParams: Reco
               </ul>
             ) : <p className="mt-2 text-sm text-moss">No exclusions provided.</p>}
           </div>
-          <p className="mt-5 text-sm text-moss">Minimum score: {config.minimum_score}</p>
-          <p className="mt-1 text-sm text-moss">Results: {config.number_of_results}</p>
+          <p className="mt-5 text-sm text-moss">Every matching company will be returned, ranked by fit score.</p>
+          {config.max_results ? <p className="mt-1 text-sm text-moss">Capped at {config.max_results} results.</p> : null}
 
           <form action="/api/searches/run" method="post" className="mt-5">
             <input type="hidden" name="config" value={JSON.stringify(config)} />

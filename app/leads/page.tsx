@@ -1,6 +1,5 @@
 import { prisma } from "@/lib/storage/prisma";
 import { LeadCardGrid } from "@/components/lead-card";
-import { DemoModeBanner } from "@/components/demo-mode-banner";
 import { visibleLeadStatuses } from "@/lib/leads/status";
 
 export const dynamic = "force-dynamic";
@@ -18,7 +17,6 @@ export default async function LeadsPage({ searchParams }: { searchParams: { stat
 
   return (
     <div className="space-y-6">
-      <DemoModeBanner />
       <div>
         <h1 className="text-3xl font-semibold">Potential clients</h1>
         <p className="mt-2 text-sm text-moss">Review each company, then mark it as a good fit or not a fit.</p>

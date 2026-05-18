@@ -1,6 +1,5 @@
 import { Play } from "lucide-react";
 import { Card, Input, Textarea } from "@/components/ui";
-import { DemoModeBanner } from "@/components/demo-mode-banner";
 
 const publicDataOptions = [
   { value: "website", label: "Website" },
@@ -17,7 +16,6 @@ const publicDataOptions = [
 export default function NewSearchPage({ searchParams }: { searchParams: { error?: string } }) {
   return (
     <div className="mx-auto max-w-4xl space-y-6">
-      <DemoModeBanner />
       <div>
         <h1 className="text-3xl font-semibold">Find clients</h1>
         <p className="mt-2 text-sm text-moss">Answer four questions. You will review the search before any results are generated.</p>
@@ -79,13 +77,9 @@ export default function NewSearchPage({ searchParams }: { searchParams: { error?
                 <span className="mb-2 block text-sm font-medium">Buying signals to look for</span>
                 <Textarea name="ideal_client_signals" placeholder="old website, no online booking, poor mobile design" />
               </label>
-              <label className="block">
-                <span className="mb-2 block text-sm font-medium">Result count</span>
-                <Input name="number_of_results" type="number" min={1} max={100} defaultValue={25} />
-              </label>
-              <label className="block">
-                <span className="mb-2 block text-sm font-medium">Minimum score</span>
-                <Input name="minimum_score" type="number" min={0} max={100} defaultValue={70} />
+              <label className="block md:col-span-2">
+                <span className="mb-2 block text-sm font-medium">Maximum results (optional)</span>
+                <Input name="max_results" type="number" min={1} placeholder="Leave empty to return every match" />
               </label>
               <label className="block md:col-span-2">
                 <span className="mb-2 block text-sm font-medium">Language</span>

@@ -1,42 +1,40 @@
 # search4clients
 
-Command-based, local-first B2B client research.
+Plug-and-play, command-based B2B client research for AI coding agents.
 
-search4clients turns an AI coding assistant into a simple client research workflow:
+search4clients has one primary flow:
 
 ```text
-Fill in a search request file
-        -> run /search4clients scan or npm run scan
-        -> review a short scored lead list
-        -> export HTML, CSV, Markdown, or JSON
+Edit config/search.request.json
+        -> run /search4clients scan in your agent
+        -> agent researches the web -> config/candidates.json
+        -> npm run scan scores and ranks the candidates
+        -> get output/latest.html, output/latest.csv, output/latest.md, output/latest.json
 ```
 
-It is inspired by the command-based flow used by projects like `career-ops`: the user keeps a predefined local file, then asks an agent command to process it.
+It is not a web app first. It is not a CRM. It is not an outreach automation tool.
 
-search4clients is not a spam tool, scraper, email sender, LinkedIn automation tool, or CRM.
+## How It Works
 
-## Status
+The agent does the research; the npm scripts score and export.
 
-Implemented today:
+- You describe what you want in `config/search.request.json`.
+- Your AI agent (claude, codex, opencode, gemini) reads that file, **researches
+  the real web** with its own search tools, and writes the companies it finds
+  to `config/candidates.json`.
+- `npm run scan` scores and ranks every candidate, then writes the report files.
 
-- `config/search.request.json` request-file workflow
-- Slash-command style agent prompts for Claude, OpenCode, and Gemini
-- `npm run scan` command
-- Local SQLite storage
-- HTML, CSV, Markdown, and JSON exports
-- Next.js review dashboard
-- Demo search provider with sample candidate data
-- Optional OpenAI provider for outreach drafts after lead approval
+## What Works Today
 
-The current search provider is demo-only. It is useful for testing the workflow, not live prospecting.
+- One request file: `config/search.request.json`
+- One command: `/search4clients scan`
+- Agent-driven live web research into `config/candidates.json`
+- File-based outputs in `output/`
+- No SQLite, database, or API key required for the agent command flow
+- HTML, CSV, Markdown, and JSON output
+- Optional local dashboard for manual review
 
-## How You Use It
-
-There are two supported paths.
-
-### Option A: Agent Command
-
-Install and set up:
+## Install
 
 ```bash
 git clone https://github.com/diegomm27/search4clients.git
@@ -46,9 +44,17 @@ npm run setup
 npm run doctor
 ```
 
-`npm run setup` creates the local request file and prepares the SQLite database. It does not create search results; `npm run scan` does that.
+`npm run setup` only creates the local request file from the template:
 
-Open your AI coding CLI in the project:
+```text
+config/search.request.example.json -> config/search.request.json
+```
+
+It does not create a database and it does not run a scan.
+
+## Use With An Agent
+
+Open your agent CLI in this repo:
 
 ```bash
 claude
@@ -62,9 +68,25 @@ opencode
 gemini
 ```
 
-Edit `config/search.request.json`, or ask the agent to fill it in.
+Then run:
 
-Example request:
+```text
+/search4clients scan
+```
+
+The agent should:
+
+1. Read `AGENTS.md`.
+2. Read or create `config/search.request.json`.
+3. Ask only for missing required fields.
+4. Research the web for real companies that match the request.
+5. Write the findings to `config/candidates.json` (see `config/candidates.example.json`).
+6. Run `npm run scan` to score and rank them.
+7. Run `npm run leads` and summarize the generated files in `output/`.
+
+## Request File
+
+Example:
 
 ```json
 {
@@ -87,79 +109,88 @@ Example request:
   "exclude_signals": [
     "large chains",
     "franchises"
-  ],
-  "number_of_results": 25,
-  "minimum_score": 70,
-  "output_format": "dashboard"
+  ]
 }
 ```
 
-Then run the agent command:
+Required:
 
-```text
-/search4clients scan
-```
+- `service_offered`
+- `industry`
+- `country`
 
-The agent should:
+Optional:
 
-1. Read `AGENTS.md`.
-2. Validate or complete `config/search.request.json`.
-3. Run `npm run scan`.
-4. List results with `npm run leads -- --search-id <id>`.
-5. Export HTML with `npm run export -- --search-id <id> --format html --out output/search-<id>.html`.
+- `city`
+- `desired_public_data`
+- `ideal_client_signals`
+- `exclude_signals`
 
-### Option B: Plain CLI
+Every matching company is returned, ranked by fit score. There is no minimum-score cutoff: lower-scoring companies still appear so you can review the full list.
 
-Edit `config/search.request.json`, then run:
+## Run Without An Agent
+
+`npm run scan` needs a `config/candidates.json` file. The agent writes it from
+real web research using the `/search4clients scan` command.
+
+Write `config/candidates.json` (see `config/candidates.example.json`) and run:
 
 ```bash
 npm run scan
 ```
 
-List results:
+List the latest results:
 
 ```bash
 npm run leads
-npm run leads -- --search-id 1
 ```
 
-Export:
+Export from the latest scan:
 
 ```bash
-npm run export -- --search-id 1 --format html --out output/search-1.html
-npm run export -- --search-id 1 --format csv --out output/search-1.csv
-npm run export -- --search-id 1 --format markdown --out output/search-1.md
-npm run export -- --search-id 1 --format json --out output/search-1.json
+npm run export -- --format html --out output/leads.html
+npm run export -- --format csv --out output/leads.csv
+npm run export -- --format markdown --out output/leads.md
+npm run export -- --format json --out output/leads.json
 ```
 
-Open the local review dashboard:
+Edit the request file in your text editor or ask your agent to update it, then run the agent command again.
+
+## Outputs
+
+Every scan writes:
+
+```text
+output/search-<timestamp>.html
+output/search-<timestamp>.csv
+output/search-<timestamp>.md
+output/search-<timestamp>.json
+output/latest.json
+output/latest.html
+output/latest.csv
+output/latest.md
+```
+
+HTML is the default human-readable report. CSV is for spreadsheets. Markdown is agent-readable. JSON is the full structured scan output.
+
+## Optional Dashboard
+
+The command flow does not require SQLite.
+
+The repository still includes a local Next.js dashboard for manual review experiments:
 
 ```bash
 npm run dev
 ```
 
-Then open `http://localhost:3000`.
+Open `http://localhost:3000`.
 
-## Direct One-Off Search
-
-You can still bypass the request file for one-off runs:
-
-```bash
-npm run search -- --service "Website redesign" --industry "Dental clinics" --country "Spain"
-```
-
-With optional city:
-
-```bash
-npm run search -- --service "Website redesign" --industry "Dental clinics" --country "Spain" --city "Madrid"
-```
+The dashboard uses Prisma/SQLite internally. It is optional and not part of the primary agent-command flow.
 
 ## Agent Files
 
-The repository includes command/context files for common agent CLIs:
-
 ```text
-AGENTS.md                               canonical project rules
+AGENTS.md                               canonical agent rules
 CLAUDE.md                               Claude Code entry point
 GEMINI.md                               Gemini CLI entry point
 .claude/commands/search4clients.md      Claude slash command
@@ -167,169 +198,36 @@ GEMINI.md                               Gemini CLI entry point
 .gemini/commands/search4clients.toml    Gemini command prompt
 ```
 
-The intended command is:
-
-```text
-/search4clients scan
-```
-
-Agents should prefer:
-
-```bash
-npm run doctor
-npm run scan
-npm run leads -- --search-id <id>
-npm run export -- --search-id <id> --format html --out output/search-<id>.html
-```
-
-Agents must not invent leads, imply demo data is live research, or send outreach.
-
-## Request File Reference
-
-`config/search.request.json` supports:
-
-```json
-{
-  "name": "Human-readable search name",
-  "service_offered": "What you sell",
-  "industry": "Who you want as clients",
-  "country": "Required country",
-  "city": "Optional city or null",
-  "desired_public_data": ["website", "contact_page", "source_links"],
-  "ideal_client_signals": ["old website", "no online booking"],
-  "exclude_signals": ["large chains", "franchises"],
-  "number_of_results": 25,
-  "minimum_score": 70,
-  "output_format": "dashboard"
-}
-```
-
-Required fields:
-
-- `service_offered`
-- `industry`
-- `country`
-
-Optional fields:
-
-- `city`
-- `desired_public_data`
-- `ideal_client_signals`
-- `exclude_signals`
-- `number_of_results`
-- `minimum_score`
-
-## Outputs
-
-Supported export formats:
-
-- HTML: easy to open and share locally
-- CSV: spreadsheet workflow
-- Markdown: agent-readable report
-- JSON: structured data
-
-Example:
-
-```bash
-npm run export -- --search-id 1 --format html --out output/search-1.html
-```
-
-## Configuration
-
-The main configuration is the local request file:
-
-```text
-config/search.request.json
-```
-
-`npm run setup` creates it from:
-
-```text
-config/search.request.example.json
-```
-
-SQLite always uses the local Prisma database at `prisma/dev.db`.
-
-### Search Provider
-
-The only implemented search provider today is the built-in demo provider.
-
-Future live providers must:
-
-- use permitted public business sources
-- respect robots.txt and website terms
-- avoid gated/private data
-- never bypass anti-bot controls
-- clearly label source and confidence
-
-### AI Provider
-
-The AI provider is optional and currently used only for outreach draft generation after a lead is approved.
-
-Connect it through the local Settings page. API keys are stored locally in `.data/settings.json`, used server-side only, and must never be exposed in browser code or logged in full.
-
 ## Safety Rules
 
-- Human review is required before outreach.
-- Demo data must be labeled as demo data.
-- Public business data only.
-- Prefer company-level data over personal data.
-- Unknown fields stay empty instead of being guessed.
-- Source links must not be fabricated.
-- Exports are user-controlled.
-- Outreach drafts are never sent automatically.
+- Public business data only
+- No fabricated companies, contacts, phone numbers, emails, or source links
+- No automatic outreach sending
+- No mass email or LinkedIn automation
+- No bypassing robots.txt, paywalls, authentication, CAPTCHAs, or rate limits
+- Human review before outreach
 
 ## Project Structure
 
 ```text
-app/                         Next.js local review dashboard
-components/                  Shared UI components
-config/                      Search request examples and local request file
-lib/ai/                      AI provider abstraction
-lib/evaluate/                Lead evaluation logic
-lib/export/                  HTML, CSV, Markdown exporters
-lib/leads/                   Lead display/status helpers
-lib/scoring/                 Explainable scoring
-lib/search/                  Search schemas and orchestration
-lib/storage/                 Prisma and JSON helpers
-prisma/schema.prisma         SQLite schema
-scripts/                     CLI commands
-AGENTS.md                    Canonical agent instructions
-CLAUDE.md                    Claude Code instructions
-GEMINI.md                    Gemini CLI instructions
+config/search.request.example.json      request-file template
+scripts/search.ts                       scan command
+scripts/leads.ts                        latest-result summary
+scripts/export.ts                       output converter
+lib/search/                             candidate schemas and loader
+lib/evaluate/                           lead evaluation
+lib/export/                             HTML/CSV/Markdown exporters
+app/                                    optional local dashboard
+prisma/                                 optional dashboard storage schema
 ```
 
 ## Development
 
-Useful commands:
-
 ```bash
-npm run setup
-npm run doctor
-npm run scan
 npm run typecheck
+npm run lint
 npm run build
 ```
-
-`npm run lint` is present for Next.js, but ESLint must be configured before it can run non-interactively in this repository.
-
-## Contributing
-
-Good contributions:
-
-- improve the command/request-file workflow
-- improve review UX
-- improve local-first storage and exports
-- add safe provider abstractions
-- add validation and scoring tests
-
-Avoid:
-
-- automatic outreach sending
-- browser automation for LinkedIn or email
-- mass-contact workflows
-- authentication, billing, or multi-user accounts
-- complex CRM pipelines
 
 ## License
 

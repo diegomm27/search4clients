@@ -1,6 +1,29 @@
-import type { Lead } from "@prisma/client";
+export type ExportLead = {
+  company_name: string;
+  country: string | null;
+  region: string | null;
+  city: string | null;
+  industry: string | null;
+  business_category: string | null;
+  website: string | null;
+  contact_page: string | null;
+  public_email: string | null;
+  public_phone: string | null;
+  linkedin_company_page: string | null;
+  score: number;
+  fit_grade: string;
+  contactability_score: number;
+  confidence_score: number;
+  status: string;
+  reason_for_fit: string;
+  suggested_offer: string | null;
+  suggested_outreach_angle: string | null;
+  notes: string;
+  created_at: Date | string;
+  updated_at: Date | string;
+};
 
-const fields: Array<keyof Lead> = [
+const fields: Array<keyof ExportLead> = [
   "company_name",
   "country",
   "region",
@@ -25,6 +48,12 @@ const fields: Array<keyof Lead> = [
   "updated_at"
 ];
 
+function fitTier(score: number) {
+  if (score >= 75) return "Strong fit";
+  if (score >= 55) return "Possible fit";
+  return "Low fit";
+}
+
 function cell(value: unknown) {
   if (value === null || value === undefined) return "";
   if (value instanceof Date) return value.toISOString();
@@ -32,7 +61,7 @@ function cell(value: unknown) {
   return String(value);
 }
 
-export function leadsToCsv(leads: Lead[]) {
+export function leadsToCsv(leads: ExportLead[]) {
   const rows = [fields.join(",")];
   for (const lead of leads) {
     rows.push(fields.map((field) => `"${cell(lead[field]).replace(/"/g, '""')}"`).join(","));
@@ -40,10 +69,10 @@ export function leadsToCsv(leads: Lead[]) {
   return rows.join("\n");
 }
 
-export function leadsToMarkdown(leads: Lead[]) {
-  const header = "| Company | Location | Score | Grade | Status | Reason |\n|---|---|---:|:---:|---|---|";
+export function leadsToMarkdown(leads: ExportLead[]) {
+  const header = "| Company | Location | Score | Fit | Status | Reason |\n|---|---|---:|---|---|---|";
   const rows = leads.map((lead) =>
-    `| ${lead.company_name} | ${[lead.city, lead.country].filter(Boolean).join(", ")} | ${lead.score} | ${lead.fit_grade} | ${lead.status} | ${lead.reason_for_fit.replace(/\|/g, "/")} |`
+    `| ${lead.company_name} | ${[lead.city, lead.country].filter(Boolean).join(", ")} | ${lead.score} | ${fitTier(lead.score)} | ${lead.status} | ${lead.reason_for_fit.replace(/\|/g, "/")} |`
   );
   return [header, ...rows].join("\n");
 }
@@ -56,7 +85,7 @@ function escapeHtml(value: unknown) {
     .replace(/"/g, "&quot;");
 }
 
-export function leadsToHtml(leads: Lead[]) {
+export function leadsToHtml(leads: ExportLead[]) {
   const rows = leads.map((lead) => `
       <article class="lead">
         <div class="lead-header">
@@ -64,7 +93,7 @@ export function leadsToHtml(leads: Lead[]) {
             <h2>${escapeHtml(lead.company_name)}</h2>
             <p>${escapeHtml([lead.city, lead.country].filter(Boolean).join(", ") || "Location unavailable")} - ${escapeHtml(lead.industry || "Industry unavailable")}</p>
           </div>
-          <strong>Score ${escapeHtml(lead.score)}</strong>
+          <strong>Score ${escapeHtml(lead.score)} &middot; ${escapeHtml(fitTier(lead.score))}</strong>
         </div>
         <p>${escapeHtml(lead.reason_for_fit)}</p>
         <dl>
@@ -100,7 +129,7 @@ export function leadsToHtml(leads: Lead[]) {
 <body>
   <main>
     <h1>Potential clients</h1>
-    <p class="meta">${leads.length} leads exported from search4clients. Review before taking action.</p>
+    <p class="meta">${leads.length} potential clients found, ranked by fit score. The full list is shown — review before taking action.</p>
     ${rows || "<p>No leads found.</p>"}
   </main>
 </body>

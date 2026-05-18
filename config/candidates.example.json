@@ -1,0 +1,27 @@
+{
+  "generated_by": "agent web research",
+  "generated_at": "2026-05-18T00:00:00.000Z",
+  "request_name": "Spain dental clinics for website redesign",
+  "candidates": [
+    {
+      "company_name": "Example Dental Clinic",
+      "country": "Spain",
+      "region": "Community of Madrid",
+      "city": "Madrid",
+      "industry": "Dental clinic",
+      "business_category": "Healthcare",
+      "website": "https://example-dental.es",
+      "contact_page": "https://example-dental.es/contacto",
+      "public_email": "info@example-dental.es",
+      "public_phone": "+34 910 000 000",
+      "linkedin_company_page": null,
+      "social_profiles": ["https://instagram.com/example-dental"],
+      "company_description": "Independent dental clinic offering general and cosmetic dentistry. One location, family-run.",
+      "observed_signals": ["old website", "no online booking", "poor mobile design"],
+      "sources": [
+        "https://example-dental.es",
+        "https://maps.google.com/?q=example+dental+madrid"
+      ]
+    }
+  ]
+}

@@ -54,8 +54,7 @@ export const searchConfigSchema = z.object({
   ideal_client_signals: z.array(z.string()).default([]),
   exclude_signals: z.array(z.string()).default([]),
   desired_public_data: z.array(z.enum(desiredPublicData)).default([...defaultDesiredPublicData]),
-  number_of_results: z.coerce.number().int().min(1).max(100).default(25),
-  minimum_score: z.coerce.number().int().min(0).max(100).default(70),
+  max_results: z.coerce.number().int().min(1).nullable().optional(),
   output_format: z.enum(["table", "csv", "json", "markdown", "sqlite", "dashboard"]).default("table"),
   notes: z.string().optional()
 });

@@ -20,8 +20,7 @@ model Search {
   ideal_client_signals String
   exclude_signals     String
   desired_public_data String
-  number_of_results   Int
-  minimum_score       Int      @default(70)
+  max_results         Int?
   output_format       String   @default("table")
   status              String   @default("draft")
   notes               String?

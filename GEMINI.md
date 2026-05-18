@@ -8,8 +8,12 @@ Use these commands:
 - `npm run scan`
 - `npm run leads`
 - `npm run export -- --format html --out output/leads.html`
-- `npm run dev`
 
-`npm run scan` reads `config/search.request.json`. Ask only for missing required fields before updating that file.
+Flow: read `config/search.request.json` (ask only for missing required fields),
+research the real web for matching companies, write the results to
+`config/candidates.json` using the shape in `config/candidates.example.json`,
+then run `npm run scan`. The scan scores and ranks the candidates you wrote.
 
-Keep the workflow human-in-the-loop. Never send outreach automatically and never invent lead data.
+Keep the workflow human-in-the-loop. Never send outreach automatically and
+never invent lead data — every candidate must be a real company with real
+source links.

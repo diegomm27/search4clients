@@ -3,7 +3,6 @@ import { ArrowRight, CheckCircle2, Search } from "lucide-react";
 import { prisma } from "@/lib/storage/prisma";
 import { Card } from "@/components/ui";
 import { LeadCardGrid } from "@/components/lead-card";
-import { DemoModeBanner } from "@/components/demo-mode-banner";
 
 export const dynamic = "force-dynamic";
 
@@ -15,8 +14,6 @@ export default async function HomePage() {
 
   return (
     <div className="space-y-8">
-      <DemoModeBanner />
-
       <section className="rounded-lg border border-line bg-white p-8">
         <h1 className="max-w-3xl text-4xl font-semibold tracking-normal text-ink">Find better potential clients</h1>
         <p className="mt-4 max-w-2xl text-base leading-7 text-moss">

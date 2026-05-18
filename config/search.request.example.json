@@ -19,7 +19,6 @@
     "large chains",
     "franchises"
   ],
-  "number_of_results": 25,
-  "minimum_score": 70,
+  "max_results": null,
   "output_format": "dashboard"
 }
