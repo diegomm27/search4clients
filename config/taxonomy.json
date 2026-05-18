@@ -1,0 +1,369 @@
+{
+  "version": "1",
+  "iso_codes": {
+    "afghanistan": "AF", "albania": "AL", "algeria": "DZ", "andorra": "AD",
+    "argentina": "AR", "australia": "AU", "austria": "AT", "belgium": "BE",
+    "bolivia": "BO", "brazil": "BR", "bulgaria": "BG", "canada": "CA",
+    "chile": "CL", "china": "CN", "colombia": "CO", "croatia": "HR",
+    "czech republic": "CZ", "czechia": "CZ", "denmark": "DK", "ecuador": "EC",
+    "egypt": "EG", "estonia": "EE", "finland": "FI", "france": "FR",
+    "germany": "DE", "ghana": "GH", "greece": "GR", "hungary": "HU",
+    "india": "IN", "indonesia": "ID", "ireland": "IE", "israel": "IL",
+    "italy": "IT", "japan": "JP", "kenya": "KE", "latvia": "LV",
+    "lithuania": "LT", "luxembourg": "LU", "malaysia": "MY", "mexico": "MX",
+    "morocco": "MA", "netherlands": "NL", "new zealand": "NZ", "nigeria": "NG",
+    "norway": "NO", "pakistan": "PK", "paraguay": "PY", "peru": "PE",
+    "philippines": "PH", "poland": "PL", "portugal": "PT", "romania": "RO",
+    "russia": "RU", "saudi arabia": "SA", "serbia": "RS", "singapore": "SG",
+    "slovakia": "SK", "slovenia": "SI", "south africa": "ZA", "south korea": "KR",
+    "spain": "ES", "sweden": "SE", "switzerland": "CH", "taiwan": "TW",
+    "thailand": "TH", "turkey": "TR", "ukraine": "UA", "united arab emirates": "AE",
+    "uae": "AE", "united kingdom": "GB", "uk": "GB", "united states": "US",
+    "usa": "US", "united states of america": "US", "uruguay": "UY",
+    "venezuela": "VE", "vietnam": "VN"
+  },
+  "categories": [
+    {
+      "id": "bookstore",
+      "business_category": "Retail",
+      "labels": [
+        "bookstore", "bookshop", "book store", "book shop", "librería",
+        "librairie", "libreria", "buchhandlung", "boekhandel",
+        "independent bookstore", "libros", "books"
+      ],
+      "osm_tags": [["shop", "books"]],
+      "places_type": "book_store",
+      "places_keyword": "bookstore"
+    },
+    {
+      "id": "dental_clinic",
+      "business_category": "Healthcare",
+      "labels": [
+        "dental clinic", "dentist", "dentistry", "clínica dental",
+        "dentista", "odontología", "odontologia", "zahnarzt",
+        "cabinet dentaire", "studio dentistico", "dental practice",
+        "dental office", "dental surgery"
+      ],
+      "osm_tags": [["amenity", "dentist"]],
+      "places_type": "dentist",
+      "places_keyword": "dental clinic"
+    },
+    {
+      "id": "optician",
+      "business_category": "Healthcare",
+      "labels": [
+        "optician", "optometrist", "eye care", "glasses shop",
+        "optica", "óptica", "opticien", "optiker", "eyewear"
+      ],
+      "osm_tags": [["shop", "optician"]],
+      "places_type": "optician",
+      "places_keyword": "optician"
+    },
+    {
+      "id": "pharmacy",
+      "business_category": "Healthcare",
+      "labels": [
+        "pharmacy", "chemist", "drugstore", "farmacia", "pharmacie",
+        "apotheke", "apotheek", "farmácia"
+      ],
+      "osm_tags": [["amenity", "pharmacy"]],
+      "places_type": "pharmacy",
+      "places_keyword": "pharmacy"
+    },
+    {
+      "id": "physiotherapy",
+      "business_category": "Healthcare",
+      "labels": [
+        "physiotherapy", "physical therapy", "physiotherapist",
+        "fisioterapia", "fisioterapeuta", "kinésithérapie", "physiotherapeut"
+      ],
+      "osm_tags": [["healthcare", "physiotherapist"]],
+      "places_type": "physiotherapist",
+      "places_keyword": "physiotherapy clinic"
+    },
+    {
+      "id": "gym",
+      "business_category": "Health & Fitness",
+      "labels": [
+        "gym", "fitness center", "fitness centre", "sports club", "health club",
+        "gimnasio", "salle de sport", "fitnessstudio", "palestra"
+      ],
+      "osm_tags": [["leisure", "fitness_centre"]],
+      "places_type": "gym",
+      "places_keyword": "gym"
+    },
+    {
+      "id": "yoga_studio",
+      "business_category": "Health & Fitness",
+      "labels": [
+        "yoga studio", "yoga school", "yoga center", "estudio de yoga",
+        "studio de yoga", "yogastudio"
+      ],
+      "osm_tags": [["sport", "yoga"]],
+      "places_type": "gym",
+      "places_keyword": "yoga studio"
+    },
+    {
+      "id": "hair_salon",
+      "business_category": "Beauty & Personal Care",
+      "labels": [
+        "hair salon", "hairdresser", "barber", "barbershop", "peluquería",
+        "salon de coiffure", "friseur", "parrucchiere", "barbeiro"
+      ],
+      "osm_tags": [["shop", "hairdresser"]],
+      "places_type": "hair_care",
+      "places_keyword": "hair salon"
+    },
+    {
+      "id": "beauty_salon",
+      "business_category": "Beauty & Personal Care",
+      "labels": [
+        "beauty salon", "beauty parlour", "nail salon", "spa", "estetica",
+        "salón de belleza", "institut de beauté", "kosmetikstudio"
+      ],
+      "osm_tags": [["shop", "beauty"]],
+      "places_type": "beauty_salon",
+      "places_keyword": "beauty salon"
+    },
+    {
+      "id": "restaurant",
+      "business_category": "Food & Beverage",
+      "labels": [
+        "restaurant", "restaurante", "ristorante", "restaurant", "gasthaus",
+        "eating place", "diner", "bistro"
+      ],
+      "osm_tags": [["amenity", "restaurant"]],
+      "places_type": "restaurant",
+      "places_keyword": "restaurant"
+    },
+    {
+      "id": "cafe",
+      "business_category": "Food & Beverage",
+      "labels": [
+        "cafe", "café", "coffee shop", "coffeehouse", "cafetería",
+        "kaffehaus", "koffie", "caffe"
+      ],
+      "osm_tags": [["amenity", "cafe"]],
+      "places_type": "cafe",
+      "places_keyword": "cafe"
+    },
+    {
+      "id": "bakery",
+      "business_category": "Food & Beverage",
+      "labels": [
+        "bakery", "panadería", "boulangerie", "bäckerei", "panetteria",
+        "padaria", "bread shop", "pastry shop", "patisserie"
+      ],
+      "osm_tags": [["shop", "bakery"]],
+      "places_type": "bakery",
+      "places_keyword": "bakery"
+    },
+    {
+      "id": "clothing_store",
+      "business_category": "Retail",
+      "labels": [
+        "clothing store", "clothes shop", "fashion boutique", "boutique",
+        "tienda de ropa", "magasin de vêtements", "bekleidungsgeschäft",
+        "negozio di abbigliamento"
+      ],
+      "osm_tags": [["shop", "clothes"]],
+      "places_type": "clothing_store",
+      "places_keyword": "clothing store"
+    },
+    {
+      "id": "florist",
+      "business_category": "Retail",
+      "labels": [
+        "florist", "flower shop", "flower store", "florería", "fleuriste",
+        "blumenladen", "fioraio"
+      ],
+      "osm_tags": [["shop", "florist"]],
+      "places_type": "florist",
+      "places_keyword": "florist"
+    },
+    {
+      "id": "pet_store",
+      "business_category": "Retail",
+      "labels": [
+        "pet store", "pet shop", "veterinary", "vet", "tienda de mascotas",
+        "animalerie", "zoohandlung", "negozio per animali"
+      ],
+      "osm_tags": [["shop", "pet"]],
+      "places_type": "pet_store",
+      "places_keyword": "pet store"
+    },
+    {
+      "id": "supermarket",
+      "business_category": "Retail",
+      "labels": [
+        "supermarket", "grocery store", "supermercado", "supermarché",
+        "supermarkt", "supermercato", "convenience store"
+      ],
+      "osm_tags": [["shop", "supermarket"]],
+      "places_type": "supermarket",
+      "places_keyword": "supermarket"
+    },
+    {
+      "id": "hotel",
+      "business_category": "Hospitality",
+      "labels": [
+        "hotel", "hostel", "inn", "bed and breakfast", "b&b", "motel",
+        "alojamiento", "hébergement", "herberge", "albergue"
+      ],
+      "osm_tags": [["tourism", "hotel"]],
+      "places_type": "lodging",
+      "places_keyword": "hotel"
+    },
+    {
+      "id": "real_estate_agency",
+      "business_category": "Real Estate",
+      "labels": [
+        "real estate agency", "real estate agent", "property agency",
+        "agencia inmobiliaria", "agence immobilière", "immobilienmakler",
+        "agenzia immobiliare", "imobiliária"
+      ],
+      "osm_tags": [["shop", "estate_agent"]],
+      "places_type": "real_estate_agency",
+      "places_keyword": "real estate agency"
+    },
+    {
+      "id": "law_firm",
+      "business_category": "Professional Services",
+      "labels": [
+        "law firm", "lawyer", "attorney", "solicitor", "despacho de abogados",
+        "cabinet d'avocats", "rechtsanwaltskanzlei", "studio legale", "advogado"
+      ],
+      "osm_tags": [["amenity", "lawyers"]],
+      "places_type": "lawyer",
+      "places_keyword": "law firm"
+    },
+    {
+      "id": "accounting_firm",
+      "business_category": "Professional Services",
+      "labels": [
+        "accounting firm", "accountant", "bookkeeper", "tax advisor",
+        "gestoría", "asesoría fiscal", "cabinet comptable", "steuerberater",
+        "commercialista", "contabilidade"
+      ],
+      "osm_tags": [["amenity", "accountant"]],
+      "places_type": "accounting",
+      "places_keyword": "accounting firm"
+    },
+    {
+      "id": "web_design_agency",
+      "business_category": "Technology",
+      "labels": [
+        "web design agency", "web design", "web development", "digital agency",
+        "agencia de diseño web", "agence web", "webdesign agentur",
+        "agenzia web", "website design"
+      ],
+      "osm_tags": [["office", "company"]],
+      "places_type": "establishment",
+      "places_keyword": "web design agency"
+    },
+    {
+      "id": "marketing_agency",
+      "business_category": "Professional Services",
+      "labels": [
+        "marketing agency", "advertising agency", "digital marketing",
+        "agencia de marketing", "agence de marketing", "marketingagentur",
+        "agenzia marketing", "social media agency"
+      ],
+      "osm_tags": [["office", "company"]],
+      "places_type": "establishment",
+      "places_keyword": "marketing agency"
+    },
+    {
+      "id": "school",
+      "business_category": "Education",
+      "labels": [
+        "school", "primary school", "secondary school", "high school",
+        "colegio", "école", "schule", "scuola", "escola"
+      ],
+      "osm_tags": [["amenity", "school"]],
+      "places_type": "school",
+      "places_keyword": "school"
+    },
+    {
+      "id": "language_school",
+      "business_category": "Education",
+      "labels": [
+        "language school", "language academy", "english school",
+        "academia de idiomas", "école de langues", "sprachschule",
+        "scuola di lingue", "tutoring center"
+      ],
+      "osm_tags": [["amenity", "language_school"]],
+      "places_type": "school",
+      "places_keyword": "language school"
+    },
+    {
+      "id": "hotel_restaurant",
+      "business_category": "Hospitality",
+      "labels": [
+        "hotel restaurant", "resort", "boutique hotel", "guesthouse",
+        "casa rural", "maison d'hôtes", "pension"
+      ],
+      "osm_tags": [["tourism", "guest_house"]],
+      "places_type": "lodging",
+      "places_keyword": "guesthouse"
+    },
+    {
+      "id": "car_repair",
+      "business_category": "Automotive",
+      "labels": [
+        "car repair", "auto repair", "mechanic", "garage", "taller mecánico",
+        "garage automobile", "kfz-werkstatt", "autofficina", "oficina mecânica"
+      ],
+      "osm_tags": [["shop", "car_repair"]],
+      "places_type": "car_repair",
+      "places_keyword": "car repair"
+    },
+    {
+      "id": "photography_studio",
+      "business_category": "Creative Services",
+      "labels": [
+        "photography studio", "photographer", "photo studio", "estudio fotográfico",
+        "studio photo", "fotostudio", "studio fotografico"
+      ],
+      "osm_tags": [["shop", "photo"]],
+      "places_type": "photographer",
+      "places_keyword": "photography studio"
+    },
+    {
+      "id": "cleaning_service",
+      "business_category": "Home Services",
+      "labels": [
+        "cleaning service", "cleaning company", "house cleaning",
+        "empresa de limpieza", "service de nettoyage", "reinigungsunternehmen",
+        "impresa di pulizie", "cleaning business"
+      ],
+      "osm_tags": [["office", "company"]],
+      "places_type": "establishment",
+      "places_keyword": "cleaning service company"
+    },
+    {
+      "id": "construction_company",
+      "business_category": "Construction",
+      "labels": [
+        "construction company", "builder", "contractor", "construction firm",
+        "empresa de construcción", "entreprise de construction", "bauunternehmen",
+        "impresa edile", "empresa de construção"
+      ],
+      "osm_tags": [["office", "company"]],
+      "places_type": "general_contractor",
+      "places_keyword": "construction company"
+    },
+    {
+      "id": "insurance_agency",
+      "business_category": "Financial Services",
+      "labels": [
+        "insurance agency", "insurance broker", "insurance company",
+        "agencia de seguros", "compañía de seguros", "agence d'assurance",
+        "versicherungsagentur", "agenzia assicurativa"
+      ],
+      "osm_tags": [["amenity", "insurance"]],
+      "places_type": "insurance_agency",
+      "places_keyword": "insurance agency"
+    }
+  ]
+}

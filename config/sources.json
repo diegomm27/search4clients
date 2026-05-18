@@ -1,0 +1,123 @@
+{
+  "sources": [
+    {
+      "id": "osm-overpass",
+      "name": "OpenStreetMap Overpass API",
+      "kind": "api",
+      "enabled": true,
+      "countries": ["*"],
+      "categories": ["*"],
+      "free": true,
+      "note": "Free, no key required. Global coverage for physical businesses. Attribution: © OpenStreetMap contributors (ODbL)."
+    },
+    {
+      "id": "google-places",
+      "name": "Google Places API",
+      "kind": "api",
+      "enabled": true,
+      "countries": ["*"],
+      "categories": ["*"],
+      "free": false,
+      "requiresKey": "GOOGLE_PLACES_API_KEY",
+      "note": "Requires GOOGLE_PLACES_API_KEY in .env. Best coverage for physical retail and services worldwide."
+    },
+    {
+      "id": "template-directory-es",
+      "name": "Páginas Amarillas Spain — TEMPLATE",
+      "kind": "browser",
+      "enabled": false,
+      "countries": ["ES"],
+      "categories": ["*"],
+      "free": true,
+      "note": "DISABLED — template only. Before enabling, verify this site's robots.txt and Terms of Service permit automated pagination. Update selectors to match the current site structure.",
+      "playwright": {
+        "entryUrl": "https://www.paginasamarillas.es/buscar/{KEYWORD}/todo-espana/",
+        "paginationType": "query-param",
+        "paginationParam": "npag",
+        "selectors": {
+          "item": ".list-item-adv",
+          "name": ".title-adv",
+          "address": ".address",
+          "phone": ".phone",
+          "website": ".web a"
+        },
+        "stopCondition": "empty-page",
+        "maxPages": 50,
+        "delayMs": 2000
+      }
+    },
+    {
+      "id": "template-directory-de",
+      "name": "Gelbe Seiten Germany — TEMPLATE",
+      "kind": "browser",
+      "enabled": false,
+      "countries": ["DE"],
+      "categories": ["*"],
+      "free": true,
+      "note": "DISABLED — template only. Verify robots.txt and ToS before enabling.",
+      "playwright": {
+        "entryUrl": "https://www.gelbeseiten.de/suche/{KEYWORD}/deutschland",
+        "paginationType": "next-button",
+        "selectors": {
+          "item": ".mod_Treffer",
+          "name": ".mod_Treffer-header h2",
+          "phone": ".mod_Treffer-phone",
+          "website": ".mod_Treffer-website a",
+          "nextButton": ".pager-next a"
+        },
+        "stopCondition": "no-next-button",
+        "maxPages": 50,
+        "delayMs": 2000
+      }
+    },
+    {
+      "id": "template-directory-uk",
+      "name": "Yell.com UK — TEMPLATE",
+      "kind": "browser",
+      "enabled": false,
+      "countries": ["GB"],
+      "categories": ["*"],
+      "free": true,
+      "note": "DISABLED — template only. Verify robots.txt and ToS before enabling.",
+      "playwright": {
+        "entryUrl": "https://www.yell.com/ucs/UcsSearchAction.do?keywords={KEYWORD}&location=UK",
+        "paginationType": "next-button",
+        "selectors": {
+          "item": ".businessCapsule",
+          "name": ".businessCapsule--name",
+          "phone": ".businessCapsule--telephone",
+          "website": ".businessCapsule--website a",
+          "nextButton": ".pagination--next"
+        },
+        "stopCondition": "no-next-button",
+        "maxPages": 50,
+        "delayMs": 2000
+      }
+    },
+    {
+      "id": "template-directory-fr",
+      "name": "PagesJaunes France — TEMPLATE",
+      "kind": "browser",
+      "enabled": false,
+      "countries": ["FR"],
+      "categories": ["*"],
+      "free": true,
+      "note": "DISABLED — template only. Verify robots.txt and ToS before enabling.",
+      "playwright": {
+        "entryUrl": "https://www.pagesjaunes.fr/recherche/{KEYWORD}",
+        "paginationType": "next-button",
+        "selectors": {
+          "item": ".bi-content",
+          "name": ".denomination-links",
+          "address": ".address",
+          "phone": ".phones",
+          "website": ".site-internet a",
+          "nextButton": ".pagination-next a"
+        },
+        "stopCondition": "no-next-button",
+        "maxPages": 50,
+        "delayMs": 2000
+      }
+    }
+  ]
+}

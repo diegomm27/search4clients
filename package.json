@@ -18,11 +18,13 @@
     "typecheck": "tsc --noEmit",
     "setup": "tsx scripts/setup.ts",
     "doctor": "tsx scripts/doctor.ts",
-    "scan": "tsx scripts/search.ts",
+    "scan": "tsx scripts/scan.ts",
+    "score": "tsx scripts/search.ts",
     "leads": "tsx scripts/leads.ts",
     "export": "tsx scripts/export.ts"
   },
   "dependencies": {
+    "playwright": "^1.60.0",
     "zod": "^3.24.1"
   },
   "devDependencies": {

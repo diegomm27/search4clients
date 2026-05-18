@@ -1,0 +1,7 @@
+{
+  "MD013": false,
+  "MD040": false,
+  "MD060": {
+    "table_pipe_style": "compact"
+  }
+}
