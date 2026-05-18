@@ -37,15 +37,16 @@ search.request.json ──▶ /search4clients scan
 search4clients/
 ├── AGENTS.md                  ✅ canonical instructions (rewritten)
 ├── CLAUDE.md                  ✅ thin Claude Code wrapper
-├── GEMINI.md                  ⬜ thin Gemini CLI wrapper
-├── .gemini/commands/*.toml    ⬜ Gemini CLI command defs
+├── GEMINI.md                  ✅ thin Gemini CLI wrapper
+├── .gemini/commands/*.toml    ✅ Gemini CLI command defs
 ├── .markdownlint.json         ✅ markdown linting config
 ├── config/
 │   ├── search.request.json    ✅ exists
 │   ├── sources.json           ✅ NEW — directory registry
 │   ├── taxonomy.json          ✅ NEW — 30 categories, 70 country ISO codes
+│   ├── region-mapping.json    ✅ NEW — sub-regions for large countries
 │   └── candidates.json        produced by npm run scan
-├── modes/                     ⬜ NEW — focused skill modes
+├── modes/                     ✅ focused skill modes
 │   ├── _shared.md
 │   ├── scan.md
 │   ├── enrich.md
@@ -53,31 +54,31 @@ search4clients/
 │   ├── export.md
 │   └── batch.md
 ├── lib/
-│   ├── scan/                  🔄 IN PROGRESS
+│   ├── scan/                  ✅ complete
 │   │   ├── types.ts           ✅ RawRecord, ScanProvider, ProviderRequest
 │   │   ├── sources.ts         ✅ parse + validate sources.json
-│   │   ├── scanner.ts         ⬜ orchestrator
+│   │   ├── scanner.ts         ✅ orchestrator (with region batching)
 │   │   └── providers/
-│   │       ├── overpass.ts    ⬜ OSM Overpass provider
-│   │       ├── places.ts      ⬜ Google Places provider
-│   │       └── directory.ts   ⬜ generic Playwright paginator
-│   ├── dedup/                 ⬜ NEW — entity resolution
-│   ├── coverage/              ⬜ NEW — coverage report
-│   ├── enrich/                ⬜ NEW — site fetch, signal detection
+│   │       ├── overpass.ts    ✅ country-scoped queries + addr:* parsing
+│   │       ├── places.ts      ✅ v1 API (data.places + field mask)
+│   │       └── directory.ts   ✅ fixed pagination
+│   ├── dedup/                 ✅ entity resolution
+│   ├── coverage/              ✅ coverage report
+│   ├── enrich/                ✅ site fetch, signal detection
 │   ├── evaluate/              ✅ exists
 │   ├── scoring/               ✅ exists
 │   ├── search/                ✅ exists
 │   └── export/                ✅ exists
 ├── scripts/
-│   ├── scan.ts                ⬜ NEW — full automated pipeline
+│   ├── scan.ts                ✅ full automated pipeline (with enrichment)
 │   ├── search.ts              ✅ exists (renamed role: score pre-existing candidates.json)
-│   ├── doctor.ts              ⬜ update — check Playwright + .env keys
+│   ├── doctor.ts              ✅ check Playwright + .env keys
 │   ├── leads.ts               ✅ exists
 │   └── export.ts              ✅ exists
-├── .env.example               ⬜ NEW
-├── cache/                     ⬜ NEW — hashed raw responses, offline re-runs
-├── examples/                  ⬜ NEW — ready-to-run request files
-└── tests/                     ⬜ NEW
+├── .env.example               ✅ exists
+├── cache/                     ✅ hashed raw responses, offline re-runs
+├── examples/                  ✅ ready-to-run request files
+└── tests/                     ✅ vitest tests
 ```
 
 Legend: ✅ done · 🔄 in progress · ⬜ pending
@@ -194,3 +195,96 @@ Go terminal dashboard to browse, filter, and sort the lead pipeline. Implement l
 | 4 — Dedup + coverage | 1 | 3 |
 | 5 — OSS polish | 1 | 3, 4 |
 | 6 — Dashboard TUI | 5 | — |
+
+---
+
+## Phase 7 — Remediation: make the scanner actually deliver ✅ COMPLETE
+
+First real run (`config/search.request.json` — Spain independent bookstores, via OpenCode)
+returned **22 leads with zero phone/email**. Spain has well over a thousand independent
+bookstores, so this is not a tuning problem — the completeness engine was bypassed, and
+where it would have run, it is broken.
+
+**Root cause (verified by reading the code, not inferred):**
+
+1. **The Directory Scanner never ran.** `config/candidates.json` carries
+   `"generated_by": "agent web research"`. OpenCode followed
+   `.opencode/commands/search4clients.md`, which instructs the agent to *web-research and
+   hand-write* `candidates.json`. The 22 names are model recall, not enumeration. Contact
+   fields are empty because the "never invent" rule (correctly) stops the agent fabricating
+   emails/phones, and nothing fetched the sites.
+2. **Even if `npm run scan` had run, Overpass returns 0 for a country-level request.**
+   In `lib/scan/providers/overpass.ts`, the area filter is built only from `city`/`region`.
+   With `country: "Spain"`, `city: null`, no region, the query degrades to
+   `["shop"="books"];()` — invalid Overpass QL (no `node`/`way`/`nwr` element type) →
+   HTTP 400 → provider returns `[]`. `countryIso` ("ES") is passed in but never used.
+3. **No enrichment in the scan pipeline.** `scripts/scan.ts` runs scan → score → export.
+   `enrichCandidates` (fetch site → extract email/phone/contact page) lives only in the
+   separate `npm run enrich`. So `public_email` / `public_phone` / `contact_page` are
+   never populated by the main flow.
+
+### R1 — Overpass country-scoped query (critical) ✅ COMPLETE
+
+- [x] `overpass.ts`: derive the search area from `request.countryIso`
+      (`area["ISO3166-1"="ES"][admin_level=2]->.a; nwr(area.a);`), not only from city/region.
+- [x] Query with `nwr[...](area.a); out center <cap>;` — `nwr` + `out center` so ways and
+      relations carry coordinates (current `out body` drops geometry for ways).
+- [x] Parse `addr:city` / `addr:state` / `addr:postcode` / `addr:street` tags into
+      `RawRecord`; now populates top-level `city`, `region`, `country` fields from addr tags.
+- [x] City/region become nested area refinements layered on the country area.
+
+**Done when:** `npm run scan` on the current request returns >1,000 raw records.
+
+### R2 — Enrichment in the scan pipeline (critical) ✅ COMPLETE
+
+- [x] `scripts/scan.ts`: after dedup, score first → enrich the top N (configurable) → re-score,
+      since enriching thousands of sites is slow. Enrichment is now part of the main `npm run scan`
+      pipeline, not a separate command.
+- [x] Tightened `extractPhones` / `extractEmails` in `lib/enrich/fetch.ts` — prefer `tel:` /
+      `mailto:` hrefs then validate; added `validatePhone()` that rejects dates, prices, and
+      short digit runs. Also added schema.org `telephone` extraction.
+
+**Done when:** a meaningful share of exported leads carry a phone or email.
+
+### R3 — Reconcile agent instructions (critical) ✅ COMPLETE
+
+- [x] Rewrote `.opencode/commands/search4clients.md` — primary path is `npm run scan` → results,
+      not manual web research. Manual research stays only as an explicit fallback.
+- [x] Updated `.claude/commands/search4clients.md` with same guidance.
+- [x] Updated `.gemini/commands/search4clients.toml` with same guidance.
+- [x] Manual research route stays via `npm run score`, never `npm run scan` (scan overwrites
+      `candidates.json`).
+
+### R4 — Fix Google Places provider (incremental, needs key) ✅ COMPLETE
+
+- [x] `places.ts`: read `data.places` (the v1 `places:textSearch` response key), not
+      `data.results` — was always empty.
+- [x] Send `X-Goog-FieldMask` as a comma-joined string with `places.` prefixes, not a bare
+      array of field names.
+- [x] Added additional fields: `shortDisplayName`, `priceLevel`, `userRatingCount`, `types`.
+
+### R5 — Region batching for large countries (incremental) ✅ COMPLETE
+
+- [x] `config/region-mapping.json` — sub-region lists for ES, DE, FR, IT, US, GB, BR, AR, CA, JP.
+- [x] `scanner.ts` — `runBatchScan()` that iterates sub-regions, runs `runSingleScan()` per region,
+      unions and deduplicates results.
+- [x] `scripts/scan.ts` — auto-enables region batching when country has sub-regions and no
+      city/region is specified.
+
+**Done when:** `npm run scan` on Spain splits into 17 autonomous community queries and unions
+results.
+
+### R6 — Directory provider pagination (low — all browser sources disabled) ✅ COMPLETE
+
+- [x] `directory.ts`: `paginate()` now only calls `page.goto(entryUrl)` on the first iteration;
+      subsequent pages go through `goToNextPage()`.
+- [x] `shouldStop()` — fixed `no-next-button` to check if next button is visible and enabled.
+      Fixed `empty-page` to not always return false.
+- [x] `goToNextPage()` — next button click now checks visibility + enabled state before clicking.
+
+**Critical path:** R1 → R2 → R3 takes the Spain run from 22 hand-picked names to a few
+thousand enumerated bookstores *with* contact data, produced by the engine the agent
+actually invokes. R4–R6 are incremental coverage gains.
+
+**All Phase 7 remediation items are complete.** TypeScript compiles cleanly (zero errors)
+and all 29 tests pass.

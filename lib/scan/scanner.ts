@@ -1,9 +1,8 @@
-import { mkdir } from "fs/promises";
+import { mkdir, readFile } from "fs/promises";
 import path from "path";
-import { readFile } from "fs/promises";
+import { readFileSync, existsSync } from "fs";
 import { type RawRecord, type ScanResult, type CoverageEntry } from "@/lib/scan/types";
 import { type SourceEntry, loadSources, filterSources } from "@/lib/scan/sources";
-import { readFileSync, existsSync } from "fs";
 import { OverpassProvider } from "@/lib/scan/providers/overpass";
 import { PlacesProvider } from "@/lib/scan/providers/places";
 import { DirectoryProvider } from "@/lib/scan/providers/directory";
@@ -19,6 +18,24 @@ type ScanRequest = {
   cacheDir: string;
   maxPages?: number;
   delayMs?: number;
+  /** When true and country has sub-regions, scan each region separately and union results */
+  batchByRegion?: boolean;
+};
+
+/** Region mapping for large countries — used for R5 region batching */
+const regionMapping: Record<string, string[]> = (() => {
+  try {
+    const raw = readFileSync("config/region-mapping.json", "utf8");
+    return JSON.parse(raw).regions as Record<string, string[]>;
+  } catch {
+    return {};
+  }
+})();
+
+/** Default sub-regions for countries without a mapping file */
+const defaultRegions: Record<string, string[]> = {
+  US: ["California", "Texas", "Florida", "New York", "Pennsylvania", "Illinois", "Ohio", "Georgia", "North Carolina", "Michigan"],
+  GB: ["England", "Scotland", "Wales", "Northern Ireland"]
 };
 
 export async function runScan(request: ScanRequest): Promise<ScanResult> {
@@ -29,6 +46,19 @@ export async function runScan(request: ScanRequest): Promise<ScanResult> {
     console.log("No enabled sources match this country/category. Running with defaults.");
   }
 
+  // Check if we should batch by sub-region
+  const shouldBatch = request.batchByRegion && !request.region && !request.city;
+  const subRegions = shouldBatch ? getSubRegions(request.countryIso) : null;
+
+  if (shouldBatch && subRegions && subRegions.length > 0) {
+    console.log(`Batching by ${subRegions.length} sub-regions for ${request.country}...`);
+    return runBatchScan(sources, matched, request, subRegions);
+  }
+
+  return runSingleScan(sources, matched, request);
+}
+
+async function runSingleScan(sources: SourceEntry[], matched: SourceEntry[], request: ScanRequest): Promise<ScanResult> {
   const providers = createProviders(matched, request);
   const cacheDir = request.cacheDir || "cache";
 
@@ -54,6 +84,42 @@ export async function runScan(request: ScanRequest): Promise<ScanResult> {
 
   const deduped = deduplicate(allRecords);
   return { records: deduped, coverage };
+}
+
+async function runBatchScan(
+  sources: SourceEntry[],
+  matched: SourceEntry[],
+  baseRequest: ScanRequest,
+  subRegions: string[]
+): Promise<ScanResult> {
+  const allRecords: RawRecord[] = [];
+  const coverageMap: Record<string, number> = {};
+
+  for (const region of subRegions) {
+    console.log(`  Scanning region: ${region}...`);
+    const regionRequest: ScanRequest = {
+      ...baseRequest,
+      region,
+      city: null
+    };
+
+    const result = await runSingleScan(sources, matched, regionRequest);
+
+    for (const entry of result.coverage) {
+      coverageMap[entry.source_id] = (coverageMap[entry.source_id] || 0) + entry.count;
+    }
+    allRecords.push(...result.records);
+  }
+
+  const coverage = Object.entries(coverageMap).map(([source_id, count]) => ({ source_id, count }));
+  console.log(`  Batch complete: ${allRecords.length} total raw records across ${subRegions.length} regions`);
+
+  const deduped = deduplicate(allRecords);
+  return { records: deduped, coverage };
+}
+
+function getSubRegions(countryIso: string): string[] {
+  return regionMapping[countryIso] || defaultRegions[countryIso] || [];
 }
 
 function createProviders(sources: SourceEntry[], request: ScanRequest) {
@@ -176,7 +242,7 @@ function mergeRecords(existing: RawRecord, incoming: RawRecord): void {
 export function rawRecordsToCandidates(records: RawRecord[], request: { industry: string; country: string; countryIso: string }): CandidateCompany[] {
   return records.map((r) => ({
     company_name: r.name,
-    country: request.country,
+    country: r.country || request.country,
     region: r.region || null,
     city: r.city || null,
     industry: request.industry,

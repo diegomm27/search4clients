@@ -1,4 +1,4 @@
-import { existsSync } from "fs";
+import { existsSync, readFileSync } from "fs";
 import { mkdir, readFile, writeFile } from "fs/promises";
 import path from "path";
 import { evaluateCandidate } from "../lib/evaluate/evaluate";
@@ -6,7 +6,17 @@ import { leadsToCsv, leadsToHtml, leadsToMarkdown, type ExportLead } from "../li
 import { loadResearchCandidates, type CandidateCompany } from "../lib/search/candidates";
 import { defaultDesiredPublicData, desiredPublicData, searchConfigSchema, type SearchConfig } from "../lib/search/schemas";
 import { runScan, rawRecordsToCandidates } from "../lib/scan/scanner";
+import { enrichCandidates } from "../lib/enrich/enrich";
 import taxonomy from "../config/taxonomy.json";
+
+function getRegionMapping(): Record<string, string[]> {
+  try {
+    const raw = readFileSync("config/region-mapping.json", "utf8");
+    return JSON.parse(raw).regions as Record<string, string[]>;
+  } catch {
+    return {};
+  }
+}
 
 const REQUEST_FILE = "config/search.request.json";
 const CANDIDATES_FILE = "config/candidates.json";
@@ -134,6 +144,10 @@ async function main() {
   const countryIso = (taxonomy.iso_codes as Record<string, string>)[config.country.toLowerCase()] || "US";
   console.log(`Running scanner (country ISO: ${countryIso})...`);
 
+  // Enable region batching for large countries when no city/region specified
+  const regionMapping = getRegionMapping();
+  const shouldBatchByRegion = !config.region && !config.city && !!regionMapping[countryIso];
+
   const scanResult = await runScan({
     industry: config.industry,
     country: config.country,
@@ -143,7 +157,8 @@ async function main() {
     categoryId,
     cacheDir: "cache",
     maxPages: 10,
-    delayMs: 1000
+    delayMs: 1000,
+    batchByRegion: shouldBatchByRegion
   });
 
   console.log("");
@@ -163,11 +178,32 @@ async function main() {
   console.log("");
   console.log(`Saved ${candidates.length} candidates to ${CANDIDATES_FILE}`);
 
-  console.log("");
-  console.log("Scoring candidates...");
+  // Score first to rank candidates, then enrich only the top N (configurable)
+  const topN = Math.min(200, candidates.length);
 
-  const leads = candidates
-    .map((candidate) => evaluateCandidate(config, candidate))
+  console.log("");
+  console.log(`Scoring all ${candidates.length} candidates...`);
+
+  const scoredCandidates = candidates.map((candidate) => ({
+    candidate,
+    score: evaluateCandidate(config, candidate).score
+  }));
+
+  scoredCandidates.sort((a, b) => b.score - a.score);
+
+  // Enrich the top N candidates (fetch their sites, extract email/phone/contact page)
+  console.log(`Enriching top ${topN} candidates...`);
+
+  const enrichedResults = await enrichCandidates(CANDIDATES_FILE, { maxConcurrency: 3, delayMs: 500, maxCandidates: topN });
+
+  // Re-score after enrichment since contact data affects scores
+  console.log("");
+  console.log("Re-scoring after enrichment...");
+
+  const finalCandidates = enrichedResults.map((r) => r.candidate);
+
+  const leads = finalCandidates
+    .map((candidate, index) => evaluateCandidate(config, candidate))
     .sort((a, b) => b.score - a.score)
     .map((lead, index) => toExportLead(lead, index, timestamp));
 
@@ -178,14 +214,16 @@ async function main() {
     leads,
     coverage: scanResult.coverage,
     total_raw: scanResult.records.length,
-    total_deduped: candidates.length
+    total_deduped: finalCandidates.length
   };
 
   await writeOutputs(output);
 
+  const withContact = leads.filter((l) => l.public_email || l.public_phone).length;
   console.log("");
   console.log(`Scan complete: ${config.name}`);
   console.log(`Potential clients found: ${leads.length} (full list, ranked by fit score)`);
+  console.log(`With contact data (email/phone): ${withContact}`);
   console.log("");
   console.log("Outputs:");
   console.log(`  output/search-${id}.html`);

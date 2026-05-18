@@ -13,7 +13,7 @@ export type EnrichResult = {
 
 export async function enrichCandidates(
   candidatesPath: string,
-  options?: { maxConcurrency?: number; delayMs?: number }
+  options?: { maxConcurrency?: number; delayMs?: number; maxCandidates?: number }
 ): Promise<EnrichResult[]> {
   if (!existsSync(candidatesPath)) {
     throw new Error(`Candidates file not found: ${candidatesPath}`);
@@ -23,12 +23,15 @@ export async function enrichCandidates(
   const parsed = candidatesFileSchema.parse(JSON.parse(raw));
   const candidates = parsed.candidates;
 
+  // Limit enrichment to top N candidates for performance
+  const maxCandidates = options?.maxCandidates ?? candidates.length;
+  const candidatesToEnrich = candidates.slice(0, maxCandidates);
+
   const results: EnrichResult[] = [];
-  const concurrency = options?.maxConcurrency ?? 3;
   const delayMs = options?.delayMs ?? 500;
 
-  for (let i = 0; i < candidates.length; i++) {
-    const candidate = candidates[i];
+  for (let i = 0; i < candidatesToEnrich.length; i++) {
+    const candidate = candidatesToEnrich[i];
     if (!candidate.website) {
       results.push({
         candidate,
@@ -71,12 +74,15 @@ export async function enrichCandidates(
       enrichment_notes: null
     });
 
-    if (i < candidates.length - 1 && delayMs > 0) {
+    if (i < candidatesToEnrich.length - 1 && delayMs > 0) {
       await new Promise((resolve) => setTimeout(resolve, delayMs));
     }
   }
 
-  const enrichedCandidates = results.map((r) => r.candidate);
+  // Preserve non-enriched candidates (beyond the top N)
+  const nonEnriched = candidates.slice(maxCandidates);
+  const enrichedCandidates = [...results.map((r) => r.candidate), ...nonEnriched];
+
   await writeFile(
     candidatesPath,
     JSON.stringify({ generated_by: "search4clients-enrich", generated_at: new Date().toISOString(), candidates: enrichedCandidates }, null, 2),

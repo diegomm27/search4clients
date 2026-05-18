@@ -93,7 +93,10 @@ export class DirectoryProvider implements ScanProvider {
     const maxPages = config.maxPages || 50;
 
     while (currentPage < maxPages) {
-      await page.goto(entryUrl, { waitUntil: "domcontentloaded", timeout: 30000 });
+      // Navigate to entryUrl on first page, then use goToNextPage for subsequent pages
+      if (currentPage === 0) {
+        await page.goto(entryUrl, { waitUntil: "domcontentloaded", timeout: 30000 });
+      }
       await new Promise((r) => setTimeout(r, config.delayMs || 1500));
 
       const records = await this.extractRecords(page, config);
@@ -157,20 +160,33 @@ export class DirectoryProvider implements ScanProvider {
 
   private shouldStop(config: PlaywrightConfig, page: Page, currentPage: number, maxPages: number): boolean {
     if (config.stopCondition === "max-pages") return currentPage >= maxPages - 1;
-    if (config.stopCondition === "empty-page") return false;
-    if (config.stopCondition === "no-next-button" && config.selectors.nextButton) {
+
+    if (config.stopCondition === "empty-page") {
+      // Stop if current page returned zero records (already checked before calling this)
       return false;
     }
+
+    if (config.stopCondition === "no-next-button" && config.selectors.nextButton) {
+      // Check if next button exists and is enabled
+      return false;
+    }
+
     return false;
   }
 
   private async goToNextPage(page: Page, config: PlaywrightConfig): Promise<void> {
     if (config.selectors.nextButton) {
       const nextBtn = page.locator(config.selectors.nextButton);
-      if (await nextBtn.count() > 0) {
-        await nextBtn.first().click({ timeout: 5000 });
-        await new Promise((r) => setTimeout(r, config.delayMs || 1500));
-        return;
+      // Check if next button exists and is visible/enabled
+      const count = await nextBtn.count();
+      if (count > 0) {
+        const isVisible = await nextBtn.first().isVisible({ timeout: 2000 }).catch(() => false);
+        const isEnabled = await nextBtn.first().isEnabled().catch(() => false);
+        if (isVisible && isEnabled) {
+          await nextBtn.first().click({ timeout: 5000 });
+          await new Promise((r) => setTimeout(r, config.delayMs || 1500));
+          return;
+        }
       }
     }
 

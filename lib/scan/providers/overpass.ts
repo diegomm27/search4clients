@@ -26,17 +26,15 @@ export class OverpassProvider implements ScanProvider {
 
     const tagQuery = osmTags.map(([k, v]) => `["${k}"="${v}"];`).join("");
 
-    let areaFilter = "";
-    if (city) {
-      areaFilter = `(area["name"="${city}"]["admin_level"="8"];);`;
-    } else if (region) {
-      areaFilter = `(area["name"="${region}"]["admin_level"="4"];);`;
-    }
+    // Build area filter: country-level area, then layer city/region on top
+    const regionVal = region ?? undefined;
+    let areaFilter = this.buildAreaFilter(city, regionVal, countryIso);
 
+    // Use nwr (node/way/relation) + out center to get coordinates from all element types
     const query = `
       [out:json][timeout:60];
-      ${areaFilter ? `(${tagQuery}area${areaFilter});` : `${tagQuery}();`};
-      out body qt 5000;
+      ${areaFilter ? `(${tagQuery}${areaFilter});` : `${tagQuery}nwr();`};
+      out center qt 5000;
     `.replace(/\s+/g, " ").trim();
 
     const cacheKey = Buffer.from(query).toString("base64url").slice(0, 64);
@@ -57,7 +55,7 @@ export class OverpassProvider implements ScanProvider {
     });
 
     if (!resp.ok) {
-      console.error(`Overpass error: ${resp.status} ${resp.statusText}`);
+      console.error(`Overpass error: ${resp.status} ${resp.statusText} — Query: ${query.slice(0, 300)}`);
       return [];
     }
 
@@ -71,22 +69,54 @@ export class OverpassProvider implements ScanProvider {
     return this.parseResponse(data);
   }
 
+  /**
+   * Build area filter for Overpass QL.
+   * Priority: city (admin_level=8) > region (admin_level=4) > country (ISO3166-1 admin_level=2).
+   * Areas are nested so the query searches within the smallest valid area.
+   */
+  private buildAreaFilter(city: string | null | undefined, region: string | null | undefined, countryIso: string): string {
+    if (city) {
+      return `(area["name"="${city}"]["admin_level"="8"];);`;
+    }
+    if (region) {
+      return `(area["name"="${region}"]["admin_level"="4"];);`;
+    }
+    if (countryIso) {
+      // Use ISO3166-1 for country-level area lookups (admin_level=2)
+      return `(area["ISO3166-1"="${countryIso}"]["admin_level"="2"]->.a; nwr(area.a););`;
+    }
+    return "";
+  }
+
   private parseResponse(data: Record<string, unknown>): RawRecord[] {
     const elements = ((data.elements as Array<Record<string, unknown>>) || []).filter((el: Record<string, unknown>) => el.type === "node" || el.type === "way");
     const records: RawRecord[] = [];
 
     for (const el of elements) {
       const tags = ((el.tags as Record<string, string>) || {}) as Record<string, string>;
-      const addr = tags.address || "";
       const elId = el.id as number;
       const elLat = el.lat as number | undefined;
       const elLon = el.lon as number | undefined;
+
+      // Parse addr:* tags into structured fields (Overpass sets these separately from tags.address)
+      const addrStreet = tags["addr:street"] || null;
+      const addrHousenumber = tags["addr:housenumber"] || null;
+      const addrCity = tags["addr:city"] || tags["addr:town"] || tags["addr:village"] || null;
+      const addrState = tags["addr:state"] || null;
+      const addrPostcode = tags["addr:postcode"] || tags["addr:postal_code"] || null;
+      const addrCountry = tags["addr:country"] || null;
+
+      // Build a full address string from addr:* tags, falling back to legacy tags.address
+      const addressParts = [addrStreet, addrHousenumber, addrCity, addrPostcode, addrState].filter(Boolean);
+      const address = addressParts.length > 0
+        ? addressParts.join(", ")
+        : (tags.address || "");
 
       records.push({
         source_id: "osm-overpass",
         source_url: `https://www.openstreetmap.org/${el.type}/${elId}`,
         name: tags.name || tags["name:es"] || tags["name:fr"] || tags["name:de"] || String(elId),
-        address: addr || null,
+        address: address || null,
         lat: elLat ?? null,
         lon: elLon ?? null,
         phone: tags.phone || tags["contact:phone"] || null,
@@ -95,6 +125,10 @@ export class OverpassProvider implements ScanProvider {
         osm_id: String(elId),
         opening_hours: tags.opening_hours || null,
         description: tags.description || null,
+        // Populate top-level location fields from addr:* tags
+        city: addrCity,
+        region: addrState,
+        country: addrCountry || undefined,
         extra: {
           osm_type: el.type as string,
           shop: tags.shop,
@@ -103,7 +137,9 @@ export class OverpassProvider implements ScanProvider {
           leisure: tags.leisure,
           healthcare: tags.healthcare,
           office: tags.office,
-          sport: tags.sport
+          sport: tags.sport,
+          addr_postcode: addrPostcode,
+          addr_country: addrCountry
         }
       });
     }

@@ -1,12 +1,15 @@
 # /search4clients
 
-Find real potential B2B clients by researching the web, then score and export them.
+Find real potential B2B clients by enumerating companies from public directories, scoring their fit, and exporting a reviewable lead list.
 
 ## Modes
 
 - `/search4clients` - show the workflow and required request file.
-- `/search4clients scan` - read the request, research the web, score, and export.
+- `/search4clients scan` - enumerate companies via Directory Scanner, score, and export.
+- `/search4clients enrich` - fetch company sites, extract contact data, detect signals.
+- `/search4clients score` - score and rank pre-existing candidates.
 - `/search4clients export` - export the latest scan to CSV/Markdown/JSON/HTML.
+- `/search4clients batch` - parallel multi-region or multi-category scan.
 
 ## Workflow
 
@@ -17,35 +20,24 @@ Find real potential B2B clients by researching the web, then score and export th
    - What type of clients or industry do they want?
    - What country should be searched? (City optional.)
 4. Update `config/search.request.json` with the user's criteria.
+5. Run `npm run doctor` to verify setup (Node, Playwright, .env keys, config files).
+6. Run `npm run scan` — the scanner enumerates companies from public directories
+   (Overpass API, Google Places, browser directories), scores them, and exports.
+7. Run `npm run leads` to show the ranked list.
+8. Summarize the results and point the user to `output/latest.html`.
 
-5. **Research the web.** Using your own web search/fetch tools, find real companies
-   that match the request:
-   - Search for the `industry` in the `country` (and `city` if given).
-   - Look for companies that show the `ideal_client_signals` and avoid those
-     matching `exclude_signals`.
-   - For each company, collect only public, company-level data: website,
-     contact page, public email/phone, LinkedIn company page, a short
-     description, and the source URLs you used.
-   - Record the real problems you observed in `observed_signals` (e.g.
-     "no online booking", "outdated website") - only what you can verify from
-     public pages.
-   - Aim for a thorough list. Return every genuine match; do not pre-filter
-     by quality. The scan ranks them.
+## Alternative flows
 
-6. **Write `config/candidates.json`.** Use the exact shape in
-   `config/candidates.example.json`. Every field must come from real research.
-
-7. Run `npm run scan` - it scores and ranks every candidate and writes
-   `output/` files.
-8. Run `npm run leads` to show the ranked list.
-9. Summarize the results and point the user to `output/latest.html`.
+- **Enrich only**: If you already have `config/candidates.json`, run `npm run enrich`.
+- **Score only**: If you have a hand-written `candidates.json`, run `npm run score`.
+  **Never** use `npm run scan` for hand-written files — it overwrites `candidates.json`.
 
 ## Guardrails
 
 - Use only public business data. Prefer company-level over personal data.
 - Never invent companies, contacts, emails, phones, or source URLs. If a field
   is unknown, leave it `null` or empty.
-- Every entry in `config/candidates.json` must be a real company you found,
-  with real source links.
+- The scanner (`npm run scan`) is the primary data source. Manual web research
+  is only a fallback when no configured source covers the country/category.
 - Do not bypass robots.txt, paywalls, logins, CAPTCHAs, or rate limits.
 - Never send outreach.

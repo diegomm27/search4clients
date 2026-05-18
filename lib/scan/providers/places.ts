@@ -36,13 +36,28 @@ export class PlacesProvider implements ScanProvider {
     let pageToken: string | undefined;
     let pagesFetched = 0;
 
+    // X-Goog-FieldMask must be a comma-joined string with "places." prefixes
+    const fieldMask = [
+      "places.name",
+      "places.displayName",
+      "places.formattedAddress",
+      "places.location",
+      "places.phoneNumber",
+      "places.websiteUri",
+      "places.regularOpeningHours",
+      "places.rating",
+      "places.userRatingCount",
+      "places.priceLevel",
+      "places.types",
+      "places.shortDisplayName"
+    ].join(",");
+
     while (pagesFetched < opts.maxPages) {
       await new Promise((r) => setTimeout(r, this.delayMs));
 
       const body: Record<string, unknown> = {
         query: `${keyword}${locationHint ? `, ${locationHint}` : ""}, ${country}`,
         languageCode: this.detectLanguageCode(country),
-        fields: ["name", "displayName", "formattedAddress", "location", "phoneNumber", "websiteUri", "regularOpeningHours", "rating"],
         regionCode: country
       };
 
@@ -56,7 +71,7 @@ export class PlacesProvider implements ScanProvider {
         headers: {
           "Content-Type": "application/json",
           "X-Goog-Api-Key": this.apiKey,
-          "X-Goog-FieldMask": body.fields as string[]
+          "X-Goog-FieldMask": fieldMask
         }
       });
 
@@ -67,7 +82,9 @@ export class PlacesProvider implements ScanProvider {
       }
 
       const data = (await resp.json()) as Record<string, unknown>;
-      const results = (data.results as Array<Record<string, unknown>>) || [];
+
+      // v1 API returns results under the "places" key, not "results"
+      const results = (data.places as Array<Record<string, unknown>>) || [];
 
       if (results.length === 0) break;
 
@@ -80,7 +97,7 @@ export class PlacesProvider implements ScanProvider {
 
       if (opts.cacheDir) {
         await mkdir(opts.cacheDir, { recursive: true });
-        await writeFile(cachedPath, JSON.stringify({ results: allResults, nextPageToken: pageToken }, null, 2), "utf8");
+        await writeFile(cachedPath, JSON.stringify({ places: allResults, nextPageToken: pageToken }, null, 2), "utf8");
       }
     }
 
@@ -104,11 +121,13 @@ export class PlacesProvider implements ScanProvider {
       const nameData = place.displayName as Record<string, string> | undefined;
       const loc = place.location as Record<string, number> | undefined;
       const openingHours = place.regularOpeningHours as Record<string, unknown> | undefined;
-      const regularHours = openingHours?.periods as Array<Record<string, unknown>> | undefined;
       const weekdayText = openingHours?.weekdayText as string[] | undefined;
       const placeName = place.name as string | undefined;
       const rating = place.rating as number | undefined;
-      const userRatingsTotal = place.userRatingsTotal as number | undefined;
+      const userRatingCount = place.userRatingCount as number | undefined;
+      const priceLevel = place.priceLevel as number | undefined;
+      const types = (place.types as string[]) || [];
+      const shortDisplayName = place.shortDisplayName as Record<string, string> | undefined;
 
       records.push({
         source_id: "google-places",
@@ -122,10 +141,12 @@ export class PlacesProvider implements ScanProvider {
         email: null,
         places_id: placeName ? placeName.split("/").pop() || null : null,
         opening_hours: weekdayText?.join("; ") || null,
-        description: null,
+        description: shortDisplayName?.text || null,
         extra: {
           rating,
-          user_ratings_total: userRatingsTotal
+          user_rating_count: userRatingCount,
+          price_level: priceLevel,
+          places_types: types.join(",")
         }
       });
     }
@@ -134,7 +155,8 @@ export class PlacesProvider implements ScanProvider {
   }
 
   private parseResponse(data: Record<string, unknown>): RawRecord[] {
-    const results = (data.results as Array<Record<string, unknown>>) || [];
+    // v1 API uses "places" key
+    const results = (data.places as Array<Record<string, unknown>>) || [];
     return this.parsePlaceResults(results);
   }
 }

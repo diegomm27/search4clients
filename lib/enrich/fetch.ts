@@ -199,7 +199,7 @@ function extractTechHints($: cheerio.CheerioAPI, html: string): string[] {
     const lower = src.toLowerCase();
     if (lower.includes("google-analytics") || lower.includes("gtag")) hints.push("google-analytics");
     if (lower.includes("hubspot")) hints.push("hubspot");
-    if (lower.includes("intercom")) hints.includes("intercom");
+    if (lower.includes("intercom")) hints.push("intercom");
     if (lower.includes("zendesk")) hints.push("zendesk");
     if (lower.includes("stripe")) hints.push("stripe");
     if (lower.includes("shopify")) hints.push("shopify");
@@ -224,22 +224,107 @@ function extractTechHints($: cheerio.CheerioAPI, html: string): string[] {
 }
 
 function extractEmails(html: string): string | null {
-  const emailRegex = /[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}/g;
-  const matches = html.match(emailRegex);
-  if (!matches || matches.length === 0) return null;
-  const companyEmails = matches.filter((e) => {
-    const domain = e.split("@")[1];
-    return !/gmail\.com|yahoo\.com|hotmail\.com|outlook\.com|aol\.com|ICloud\.com/.test(domain);
+  // Prefer mailto: hrefs first, then fall back to regex extraction from body text
+  const mailtoEmails: string[] = [];
+  const $ = cheerio.load(html);
+  $("a[href^='mailto:']").each((_: number, el: any) => {
+    const href = $(el).attr("href") || "";
+    const email = href.replace(/^mailto:/i, "").split("?")[0].split("#")[0];
+    if (email && /^[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}$/.test(email)) {
+      mailtoEmails.push(email);
+    }
   });
-  return companyEmails[0] || null;
+
+  // Filter out personal email providers
+  const companyEmails = mailtoEmails.filter((e) => {
+    const domain = e.split("@")[1].toLowerCase();
+    return !/gmail\.com|yahoo\.com|hotmail\.com|outlook\.com|aol\.com|icloud\.com|live\.com|protonmail\.com|yahoo\.es/.test(domain);
+  });
+
+  if (companyEmails.length > 0) return companyEmails[0];
+
+  // Fallback: regex on the full HTML, but only look at body content
+  const bodyText = $("body").text();
+  const emailRegex = /[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}/g;
+  const matches = bodyText.match(emailRegex);
+  if (!matches || matches.length === 0) return null;
+
+  const filtered = matches.filter((e) => {
+    const domain = e.split("@")[1].toLowerCase();
+    return !/gmail\.com|yahoo\.com|hotmail\.com|outlook\.com|aol\.com|icloud\.com|live\.com|protonmail\.com|yahoo\.es/.test(domain);
+  });
+
+  return filtered[0] || null;
 }
 
 function extractPhones(html: string): string | null {
-  const phoneRegex = /(?:tel:)?\+?[\d\s\-().]{7,}/g;
-  const matches = html.match(phoneRegex);
-  if (!matches || matches.length === 0) return null;
-  const cleaned = matches.map((m) => m.replace(/[^+\d]/g, ""));
-  const usPhoneRegex = /^\+?1?\d{10}$/;
-  const nonUsPhones = cleaned.filter((p) => !usPhoneRegex.test(p) || p.startsWith("+"));
-  return nonUsPhones[0] || cleaned[0] || null;
+  // Prefer tel: hrefs first, then fall back to regex on body text
+  const telPhones: string[] = [];
+  const $ = cheerio.load(html);
+  $("a[href^='tel:']").each((_: number, el: any) => {
+    const href = $(el).attr("href") || "";
+    const phone = href.replace(/^tel:/i, "");
+    if (phone) telPhones.push(phone);
+  });
+
+  // Also look for phone items in structured data (schema.org)
+  const schemaPhones: string[] = [];
+  const schemaMatch = html.match(/"telephone"\s*:\s*"([^"]+)"/);
+  if (schemaMatch) {
+    schemaPhones.push(schemaMatch[1]);
+  }
+
+  // Validate collected phones
+  const validTel = telPhones.filter(validatePhone).slice(0, 5);
+  const validSchema = schemaPhones.filter(validatePhone).slice(0, 5);
+
+  if (validTel.length > 0) return validTel[0];
+  if (validSchema.length > 0) return validSchema[0];
+
+  // Fallback: regex on body text only (not the full HTML with scripts/styles)
+  const bodyText = $("body").text();
+  // Match phone patterns: international format, national format with country code prefix
+  const phonePatterns = [
+    /\+[\d\s\-().]{6,20}/g,         // international: +34..., +1..., etc.
+    /\b\d{3}[\s\-]\d{3}[\s\-]\d{4}\b/g, // XXX-XXX-XXXX
+    /\(\d{3}\)\s*\d{3}[\s\-]\d{4}/g,    // (XXX) XXX-XXXX
+    /\b\d{3}[\s\-]\d{3}[\s\-]\d{4}\b/g, // XXX-XXX-XXXX
+  ];
+
+  for (const pattern of phonePatterns) {
+    const matches = bodyText.match(pattern);
+    if (matches) {
+      const valid = matches.filter(validatePhone);
+      if (valid.length > 0) return valid[0];
+    }
+  }
+
+  return null;
+}
+
+/**
+ * Validate that a string looks like a real phone number.
+ * At least 7 digits, optionally with +, spaces, dashes, parens.
+ * Rejects things that are clearly not phones (dates, IDs, prices).
+ */
+function validatePhone(phone: string): boolean {
+  const cleaned = phone.replace(/[^+\d]/g, "");
+
+  // Must have at least 7 digits
+  if (cleaned.length < 7 || cleaned.length > 16) return false;
+
+  // Must start with + or a digit
+  if (!/^\+?\d/.test(cleaned)) return false;
+
+  // Reject if it looks like a date (YYYY-MM-DD, YYYY/MM/DD, etc.)
+  if (/^\d{4}[-\/]\d{2}[-\/]\d{2}$/.test(phone.trim())) return false;
+
+  // Reject if it's purely a short number (under 7 digits after cleaning)
+  const digitCount = cleaned.replace(/\D/g, "").length;
+  if (digitCount < 7) return false;
+
+  // Reject if it looks like a price (contains currency symbols mixed in)
+  if (/[€$£¥]\d/.test(phone.trim())) return false;
+
+  return true;
 }
