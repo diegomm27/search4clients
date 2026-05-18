@@ -37,7 +37,7 @@ export async function runScan(request: ScanRequest): Promise<ScanResult> {
 
   for (const provider of providers) {
     const providerRequest = buildProviderRequest(request, matched);
-    const records = await provider.scan(providerRequest, {
+    const records = await (provider as any).provider.scan(providerRequest, {
       cacheDir: path.join(cacheDir, provider.id),
       maxPages: request.maxPages || 10,
       delayMs: request.delayMs || 1000
@@ -59,8 +59,8 @@ export async function runScan(request: ScanRequest): Promise<ScanResult> {
 function createProviders(sources: SourceEntry[], request: ScanRequest) {
   const providers: Array<{ id: string; provider: { scan(request: any, opts: any): Promise<RawRecord[]> } }> = [];
 
-  const hasOverpass = sources.some((s) => s.id === "osm-overpass" && s.enabled);
-  const hasPlaces = sources.some((s) => s.id === "google-places" && s.enabled);
+  const hasOverpass = sources.some((s: SourceEntry) => s.id === "osm-overpass" && s.enabled);
+  const hasPlaces = sources.some((s: SourceEntry) => s.id === "google-places" && s.enabled);
 
   if (hasOverpass) {
     providers.push({
@@ -85,7 +85,7 @@ function createProviders(sources: SourceEntry[], request: ScanRequest) {
     }
   }
 
-  const hasBrowser = sources.some((s) => s.kind === "browser" && s.enabled && s.playwright);
+  const hasBrowser = sources.some((s: SourceEntry) => s.kind === "browser" && s.enabled && s.playwright);
   if (hasBrowser) {
     providers.push({
       id: "directory",
@@ -101,9 +101,9 @@ function createProviders(sources: SourceEntry[], request: ScanRequest) {
 
 function buildProviderRequest(request: ScanRequest, sources: SourceEntry[]) {
   const taxonomy = loadTaxonomy();
-  const category = taxonomy.categories.find((c) => c.id === request.categoryId);
+  const category = taxonomy.categories.find((c: any) => c.id === request.categoryId);
 
-  const hasPlaces = sources.some((s) => s.id === "google-places" && s.enabled);
+  const hasPlaces = sources.some((s: SourceEntry) => s.id === "google-places" && s.enabled);
 
   return {
     industry: request.industry,

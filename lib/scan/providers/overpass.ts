@@ -96,7 +96,7 @@ export class OverpassProvider implements ScanProvider {
         opening_hours: tags.opening_hours || null,
         description: tags.description || null,
         extra: {
-          osm_type: el.type,
+          osm_type: el.type as string,
           shop: tags.shop,
           amenity: tags.amenity,
           tourism: tags.tourism,

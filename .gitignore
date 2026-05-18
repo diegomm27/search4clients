@@ -1,9 +1,42 @@
-node_modules
-output
-*.log
+# Dependencies
+node_modules/
 
-.env*
+# Build output
+.next/
+*.tsbuildinfo
+out/
 
+# Cache
+cache/
+
+# Environment
+.env
+.env.local
+.env.*.local
+
+# Config (user-specific)
 config/search.request.json
 config/candidates.json
-tsconfig.tsbuildinfo
+
+# Output
+output/
+
+# Logs
+*.log
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Database
+prisma/dev.db
+prisma/dev.db-journal
+
+# Coverage
+coverage/

@@ -7,7 +7,7 @@ import { loadSources, filterSources, type PlaywrightConfig } from "@/lib/scan/so
 
 export class DirectoryProvider implements ScanProvider {
   id = "directory";
-  kind = "browser";
+  kind = "browser" as const;
 
   private cacheDir: string;
   private delayMs: number;

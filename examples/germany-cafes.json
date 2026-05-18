@@ -1,0 +1,36 @@
+{
+  "name": "Berlin cafes for POS system sales",
+  "service_offered": "Point-of-sale system for independent cafes",
+  "industry": "Cafes",
+  "country": "Germany",
+  "city": null,
+  "region": null,
+  "language": null,
+  "target_client_type": null,
+  "ideal_client_signals": [
+    "busy location",
+    "no online ordering",
+    "cash only"
+  ],
+  "exclude_signals": [
+    "starbucks",
+    "large chains"
+  ],
+  "desired_public_data": [
+    "company_name",
+    "website",
+    "public_email",
+    "public_phone",
+    "contact_page",
+    "city",
+    "country",
+    "industry",
+    "company_description",
+    "social_profiles",
+    "linkedin_company_page",
+    "source_links",
+    "reason_for_fit",
+    "suggested_outreach_angle"
+  ],
+  "notes": "Independent cafes in Berlin. Avoid major chains."
+}

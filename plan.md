@@ -117,48 +117,49 @@ Legend: ✅ done · 🔄 in progress · ⬜ pending
 
 ---
 
-### Phase 2 — Multi-CLI + mode structure ⬜ PENDING
+### Phase 2 — Multi-CLI + mode structure ✅ COMPLETE
 
-- [ ] `modes/_shared.md` — common context loaded by all modes.
-- [ ] `modes/scan.md` — how the agent drives the scanner.
-- [ ] `modes/enrich.md` — how the agent enriches candidates.
-- [ ] `modes/score.md` — how the agent scores pre-existing candidates.
-- [ ] `modes/export.md` — how the agent exports.
-- [ ] `modes/batch.md` — how the agent runs parallel multi-region scans.
-- [ ] `GEMINI.md` — thin Gemini CLI wrapper.
-- [ ] `.gemini/commands/search4clients.toml` — Gemini CLI command definitions.
+- [x] `modes/_shared.md` — common context loaded by all modes.
+- [x] `modes/scan.md` — how the agent drives the scanner.
+- [x] `modes/enrich.md` — how the agent enriches candidates.
+- [x] `modes/score.md` — how the agent scores pre-existing candidates.
+- [x] `modes/export.md` — how the agent exports.
+- [x] `modes/batch.md` — how the agent runs parallel multi-region scans.
+- [x] `GEMINI.md` — thin Gemini CLI wrapper.
+- [x] `.gemini/commands/search4clients.toml` — Gemini CLI command definitions.
 
 **Done when:** identical flow runs under Claude Code and Gemini CLI.
 
 ---
 
-### Phase 3 — Batch + enrichment ⬜ PENDING
+### Phase 3 — Batch + enrichment ✅ COMPLETE
 
-- [ ] Batch mode: parallel sub-agent workers scan multiple regions/categories.
-- [ ] Enrich mode: fetch company sites for email/phone/contact page; detect `observed_signals`.
-- [ ] `lib/enrich/` — site fetch, signal detection.
+- [x] Batch mode: parallel sub-agent workers scan multiple regions/categories (`modes/batch.md`).
+- [x] Enrich mode: fetch company sites for email/phone/contact page; detect `observed_signals`.
+- [x] `lib/enrich/` — site fetch, signal detection.
+- [x] `scripts/enrich.ts` — entry point: enrich → score → export.
 
 **Done when:** a batch run enriches and scores a multi-region list end-to-end.
 
 ---
 
-### Phase 4 — Dedup, coverage, pipeline integrity ⬜ PENDING
+### Phase 4 — Dedup, coverage, pipeline integrity ✅ COMPLETE
 
-- [ ] `lib/dedup/` — entity resolution (name + geo + phone + domain).
-- [ ] `lib/coverage/` — capture-recapture coverage estimate, reported in every export.
-- [ ] Lead status lifecycle: new → contacted → qualified → dropped.
+- [x] `lib/dedup/` — entity resolution (name + geo + phone + domain).
+- [x] `lib/coverage/` — capture-recapture coverage estimate, reported in every export.
+- [x] Lead status lifecycle: new → contacted → qualified → dropped (`lib/leads/status.ts` already existed).
 
 **Done when:** re-running a request is idempotent and the export shows a coverage figure.
 
 ---
 
-### Phase 5 — Open-source polish ⬜ PENDING
+### Phase 5 — Open-source polish ✅ COMPLETE
 
-- [ ] `README` with hero banner, demo GIF, headline metric, 60-second quickstart.
-- [ ] Multi-language READMEs, `MIT LICENSE`, `TRADEMARK.md`, `CONTRIBUTING.md`, `CODE_OF_CONDUCT.md`.
-- [ ] Tests (vitest) + GitHub Actions CI.
-- [ ] `examples/` with ready-to-run request files.
-- [ ] "Adding a directory source" guide.
+- [x] `README` with hero banner, demo GIF, headline metric, 60-second quickstart.
+- [x] Multi-language READMEs, `MIT LICENSE`, `TRADEMARK.md`, `CONTRIBUTING.md`, `CODE_OF_CONDUCT.md`.
+- [x] Tests (vitest) + GitHub Actions CI.
+- [x] `examples/` with ready-to-run request files.
+- [x] "Adding a directory source" guide (in CONTRIBUTING.md).
 
 **Done when:** a stranger can clone, run, and contribute a source without asking a question.
 

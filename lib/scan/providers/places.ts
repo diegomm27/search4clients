@@ -1,4 +1,5 @@
-import { readFile, writeFile, mkdir, existsSync } from "fs/promises";
+import { readFile, writeFile, mkdir } from "fs/promises";
+import { existsSync } from "fs";
 import path from "path";
 import { type RawRecord, type ProviderRequest, type ScanOptions, type ScanProvider } from "@/lib/scan/types";
 
@@ -6,7 +7,7 @@ const PLACES_URL = "https://places.googleapis.com/v1/places:textSearch";
 
 export class PlacesProvider implements ScanProvider {
   id = "google-places";
-  kind = "api";
+  kind = "api" as const;
 
   private apiKey: string;
   private cacheDir: string;
@@ -65,7 +66,7 @@ export class PlacesProvider implements ScanProvider {
         break;
       }
 
-      const data = await resp.json();
+      const data = (await resp.json()) as Record<string, unknown>;
       const results = (data.results as Array<Record<string, unknown>>) || [];
 
       if (results.length === 0) break;
@@ -105,23 +106,26 @@ export class PlacesProvider implements ScanProvider {
       const openingHours = place.regularOpeningHours as Record<string, unknown> | undefined;
       const regularHours = openingHours?.periods as Array<Record<string, unknown>> | undefined;
       const weekdayText = openingHours?.weekdayText as string[] | undefined;
+      const placeName = place.name as string | undefined;
+      const rating = place.rating as number | undefined;
+      const userRatingsTotal = place.userRatingsTotal as number | undefined;
 
       records.push({
         source_id: "google-places",
         source_url: null,
-        name: nameData?.text || place.name || "Unknown",
+        name: nameData?.text || placeName || "Unknown",
         address: (place.formattedAddress as string) || null,
         lat: loc?.latitude ?? null,
         lon: loc?.longitude ?? null,
         phone: (place.phoneNumber as string) || null,
         website: (place.websiteUri as string) || null,
         email: null,
-        places_id: place.name ? place.name.split("/").pop() || null : null,
+        places_id: placeName ? placeName.split("/").pop() || null : null,
         opening_hours: weekdayText?.join("; ") || null,
         description: null,
         extra: {
-          rating: place.rating,
-          user_ratings_total: place.userRatingsTotal
+          rating,
+          user_ratings_total: userRatingsTotal
         }
       });
     }

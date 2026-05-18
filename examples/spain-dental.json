@@ -1,0 +1,36 @@
+{
+  "name": "Madrid dental clinics for website redesign",
+  "service_offered": "Website redesign and online booking for dental practices",
+  "industry": "Dental clinics",
+  "country": "Spain",
+  "city": "Madrid",
+  "region": null,
+  "language": null,
+  "target_client_type": null,
+  "ideal_client_signals": [
+    "old website",
+    "no online booking",
+    "poor mobile design"
+  ],
+  "exclude_signals": [
+    "large chains",
+    "franchises"
+  ],
+  "desired_public_data": [
+    "company_name",
+    "website",
+    "public_email",
+    "public_phone",
+    "contact_page",
+    "city",
+    "country",
+    "industry",
+    "company_description",
+    "social_profiles",
+    "linkedin_company_page",
+    "source_links",
+    "reason_for_fit",
+    "suggested_outreach_angle"
+  ],
+  "notes": "Focus on independent dental clinics in Madrid with outdated websites."
+}

@@ -1,0 +1,36 @@
+{
+  "name": "Buenos Aires dentists for accounting services",
+  "service_offered": "Accounting and tax services for healthcare professionals",
+  "industry": "Dental clinics",
+  "country": "Argentina",
+  "city": "Buenos Aires",
+  "region": null,
+  "language": null,
+  "target_client_type": null,
+  "ideal_client_signals": [
+    "new practice",
+    "no accounting partner",
+    "solo practice"
+  ],
+  "exclude_signals": [
+    "large hospital groups",
+    "public healthcare"
+  ],
+  "desired_public_data": [
+    "company_name",
+    "website",
+    "public_email",
+    "public_phone",
+    "contact_page",
+    "city",
+    "country",
+    "industry",
+    "company_description",
+    "social_profiles",
+    "linkedin_company_page",
+    "source_links",
+    "reason_for_fit",
+    "suggested_outreach_angle"
+  ],
+  "notes": "Solo dental practices in Buenos Aires that may need dedicated accounting."
+}
