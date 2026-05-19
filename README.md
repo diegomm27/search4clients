@@ -1,32 +1,32 @@
 # search4clients
 
-Find real potential clients for your product or service — with an AI coding agent.
+Find real potential clients for your product or service — straight from your AI
+coding agent.
 
-You describe who you want to sell to. Your agent (Claude, Codex, Gemini, or
-OpenCode) researches the real web, finds matching companies, and collects their
-public contact details. search4clients then scores and ranks every company by
-fit and writes a clean report you can review and act on.
+You describe who you want to sell to. search4clients enumerates real companies
+from public business directories, collects their public contact details, scores
+every one by how well it fits, and writes a clean ranked report you can review
+and act on.
 
-It is not a scraper. It is not a CRM. It does not send outreach. It produces a
-reviewed, ranked list of real businesses — nothing more, nothing less.
+It is not a scraper-for-hire. It is not a CRM. It does not send outreach. It
+produces a reviewed, ranked list of real businesses — nothing more.
 
 ## How it works
 
 ```text
-config/search.request.json   ->  you describe your ideal client
+config/search.request.json   ->  describe your ideal client
         |
         v
-/search4clients (in your agent) ->  agent researches the web
-        |
-        v
-config/candidates.json       ->  real companies the agent found
-        |
-        v
-npm run scan                 ->  scores and ranks every company
+npm run scan                 ->  enumerate companies from public directories
+   (or /search4clients            enrich them with public contact data
+    inside your agent)            score and rank every one
         |
         v
 output/latest.html           ->  your ranked list of potential clients
 ```
+
+`npm run scan` runs the whole pipeline in one step — it enumerates, enriches,
+scores, and exports automatically.
 
 ## Requirements
 
@@ -50,14 +50,14 @@ cd search4clients
 npm install
 ```
 
-### 2. Create your request file
+### 2. Describe your ideal client
 
 ```bash
 npm run setup
 ```
 
-This copies `config/search.request.example.json` to
-`config/search.request.json`. Open it and describe your ideal client:
+This creates `config/search.request.json` from the template. Open it and
+describe who you want to reach:
 
 ```json
 {
@@ -68,19 +68,19 @@ This copies `config/search.request.example.json` to
   "city": "Madrid",
   "ideal_client_signals": [
     "old website",
-    "no online booking",
-    "poor mobile design"
+    "no online booking"
   ],
   "exclude_signals": [
     "large chains",
     "franchises"
-  ]
+  ],
+  "minimum_score": 20
 }
 ```
 
 Only three fields are required: `service_offered`, `industry`, and `country`.
-Everything else is optional. `city` narrows the search to one city; leave it
-out to search the whole country.
+Everything else is optional. `city` narrows the search to one city; leave it out
+to search the whole country.
 
 ### 3. Check the setup
 
@@ -88,36 +88,35 @@ out to search the whole country.
 npm run doctor
 ```
 
-This confirms Node, the request file, and the candidate file are in order.
+This confirms Node, the request file, and your configuration are in order.
 
-### 4. Run the research with your agent
+### 4. Run it
 
-Open your agent in this folder:
+**With your AI agent (recommended).** Open your agent in this folder and run the
+command. The agent fills in any missing details, runs the scan, and walks you
+through the results.
 
 ```bash
-claude
+claude      # or codex, gemini, opencode
 ```
-
-(or `codex`, `gemini`, `opencode`)
-
-Then run the command:
 
 ```text
 /search4clients
 ```
 
-The agent will:
+**Directly.** If your request file is complete, just run the pipeline yourself:
 
-1. Read your `config/search.request.json`.
-2. Ask for any missing required details.
-3. Research the public web for real companies that match.
-4. Write everything it finds to `config/candidates.json`.
-5. Run `npm run scan` to score and rank them.
-6. Show you the results in `output/`.
+```bash
+npm run scan
+```
 
-### 5. Get your list of clients
+Either way, `npm run scan` enumerates matching companies from public
+directories, enriches each with public contact data (website, email, phone),
+scores them by fit, and writes the report.
 
-The scan writes a ranked report. Open it in your browser:
+### 5. Get your list
+
+Open the ranked report in your browser:
 
 ```text
 output/latest.html
@@ -129,8 +128,26 @@ Or print the ranked list in your terminal:
 npm run leads
 ```
 
-That's it. You now have a reviewed, scored list of potential clients ready for
-manual outreach.
+That's it — a reviewed, scored list of potential clients ready for manual
+outreach.
+
+## Do I need `npm run enrich`?
+
+**Usually no.** `npm run scan` already enriches every company it finds —
+fetching websites and extracting public emails, phones, and contact pages. After
+a normal scan there is nothing extra to run.
+
+Run `npm run enrich` only when your `config/candidates.json` came from somewhere
+other than the scanner — for example, companies your agent gathered from a web
+search — and you want to collect their contact data before scoring:
+
+```bash
+npm run enrich   # fetch sites + public contact data for config/candidates.json
+npm run score    # score and export the enriched candidates
+```
+
+It is also safe to re-run on an existing candidates file to retry websites that
+failed the first time.
 
 ## The request file
 
@@ -142,15 +159,16 @@ manual outreach.
 | `city` | no | Narrow the search to one city |
 | `name` | no | A label for this search |
 | `ideal_client_signals` | no | Buying signals that make a company a better fit |
-| `exclude_signals` | no | Signals that disqualify a company |
+| `exclude_signals` | no | Signals that disqualify a company — matches drop out |
+| `minimum_score` | no | Fit score (0–100) below which leads are dropped; defaults to 20 |
 | `desired_public_data` | no | Extra public fields to collect per company |
 
-Every matching company is returned, ranked by fit score. Lower-scoring
-companies still appear so you can review the full list yourself.
+Every company scoring at or above `minimum_score` that has at least one public
+contact channel is returned, ranked by fit.
 
 ## Outputs
 
-Each scan writes timestamped files plus a `latest` copy of each:
+Each run writes timestamped files plus a `latest` copy of each:
 
 ```text
 output/search-<timestamp>.html   human-readable report
@@ -163,7 +181,7 @@ output/latest.md
 output/latest.json
 ```
 
-Re-export the latest scan in any format:
+Re-export the latest run in any format:
 
 ```bash
 npm run export -- --format html --out output/leads.html
@@ -175,9 +193,11 @@ npm run export -- --format csv  --out output/leads.csv
 ```bash
 npm run setup    # create config/search.request.json from the template
 npm run doctor   # check your local setup
-npm run scan     # score config/candidates.json and write output/
-npm run leads    # print the ranked list
-npm run export   # re-export the latest scan
+npm run scan     # enumerate -> enrich -> score -> export (the main command)
+npm run enrich   # fetch public contact data for config/candidates.json
+npm run score    # score an existing config/candidates.json and export
+npm run leads    # print the ranked list from the latest run
+npm run export   # re-export the latest run in another format
 ```
 
 ## Safety
@@ -196,8 +216,8 @@ search4clients is built to give you trustworthy leads, not shortcuts:
 ```text
 config/search.request.example.json   request-file template
 config/candidates.example.json        candidate-file shape
-scripts/                              setup, doctor, scan, leads, export
-lib/                                  scoring, evaluation, exporters, schemas
+scripts/                              setup, doctor, scan, enrich, score, leads, export
+lib/                                  scanner, enrichment, scoring, exporters, schemas
 AGENTS.md                             canonical agent instructions
 .claude/ .gemini/ .opencode/          per-agent command definitions
 ```
@@ -206,6 +226,7 @@ AGENTS.md                             canonical agent instructions
 
 ```bash
 npm run typecheck
+npm test
 ```
 
 ## License
