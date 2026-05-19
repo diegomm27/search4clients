@@ -25,7 +25,7 @@ export class OverpassProvider implements ScanProvider {
       return [];
     }
 
-    const tagQuery = osmTags.map(([k, v]) => `node["${k}"="${v}"]`).join("");
+    const tagQuery = osmTags.map(([k, v]) => `nwr["${k}"="${v}"]`).join("");
 
     // Build area filter: bounding box > city > region > country
     const regionVal = region ?? undefined;
@@ -35,7 +35,7 @@ export class OverpassProvider implements ScanProvider {
     const query = `
       [out:json][timeout:60];
       ${areaFilter ? `${tagQuery}${areaFilter}` : `${tagQuery}nwr();`}
-      out center qt 5000;
+      out center qt;
     `.replace(/\s+/g, " ").trim();
 
     const cacheKey = Buffer.from(query).toString("base64url").slice(0, 64);
@@ -122,14 +122,15 @@ export class OverpassProvider implements ScanProvider {
   }
 
   private parseResponse(data: Record<string, unknown>): RawRecord[] {
-    const elements = ((data.elements as Array<Record<string, unknown>>) || []).filter((el: Record<string, unknown>) => el.type === "node" || el.type === "way");
+    const elements = ((data.elements as Array<Record<string, unknown>>) || []).filter((el: Record<string, unknown>) => el.type === "node" || el.type === "way" || el.type === "relation");
     const records: RawRecord[] = [];
 
     for (const el of elements) {
       const tags = ((el.tags as Record<string, string>) || {}) as Record<string, string>;
       const elId = el.id as number;
-      const elLat = el.lat as number | undefined;
-      const elLon = el.lon as number | undefined;
+      // For ways and relations, use center coordinates from 'out center'
+      const elLat = (el.center as any)?.lat ?? (el.lat as number | undefined);
+      const elLon = (el.center as any)?.lon ?? (el.lon as number | undefined);
 
       // Parse addr:* tags into structured fields (Overpass sets these separately from tags.address)
       const addrStreet = tags["addr:street"] || null;
@@ -188,7 +189,7 @@ export class OverpassProvider implements ScanProvider {
     const $ = cheerio.load(xmlText, { xmlMode: true });
     const elements: Array<Record<string, unknown>> = [];
 
-    $("node, way").each((_i, el) => {
+    $("node, way, relation").each((_i, el) => {
       const type = $(el).attr("type") || $(el).get(0)?.name || "node";
       const id = Number($(el).attr("id") || 0);
       const lat = $(el).attr("lat");
@@ -206,6 +207,17 @@ export class OverpassProvider implements ScanProvider {
       const elementObj: Record<string, unknown> = { type, id, tags };
       if (lat) elementObj.lat = Number(lat);
       if (lon) elementObj.lon = Number(lon);
+
+      // Extract center coordinates if present (from 'out center')
+      const centerElem = $(el).find("center");
+      if (centerElem.length > 0) {
+        const centerLat = centerElem.attr("lat");
+        const centerLon = centerElem.attr("lon");
+        if (centerLat && centerLon) {
+          elementObj.center = { lat: Number(centerLat), lon: Number(centerLon) };
+        }
+      }
+
       elements.push(elementObj);
     });
 

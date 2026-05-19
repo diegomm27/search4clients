@@ -43,6 +43,7 @@ export type ProviderRequest = {
   osmTags?: Array<[string, string]>;
   placesType?: string | null;
   placesKeyword?: string | null;
+  regionBboxes?: Record<string, [number, number, number, number]>;
 };
 
 export type ScanOptions = {

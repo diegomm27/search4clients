@@ -132,16 +132,52 @@ async function main() {
   console.log("");
 
   const categoryIndex = findCategoryIndex(config.industry);
-  const categoryId = categoryIndex >= 0 ? taxonomy.categories[categoryIndex].id : "bookstore";
 
   if (categoryIndex < 0) {
-    console.log(`Warning: "${config.industry}" not found in taxonomy. Using default category: ${categoryId}`);
-  } else {
-    console.log(`Taxonomy match: ${categoryId}`);
+    const available = taxonomy.categories.map((c) => c.id).join(", ");
+    console.error(`No taxonomy category matches industry "${config.industry}".`);
+    console.error("");
+    console.error("The scanner cannot enumerate this industry without a matching category.");
+    console.error("Scanning a wrong category would return unrelated, useless results.");
+    console.error("");
+    console.error("AGENT INSTRUCTIONS — resolve this before re-running the scan:");
+    console.error(`  1. Check whether one of the existing categories fits the industry,`);
+    console.error(`     and if so, set "industry" in ${REQUEST_FILE} to a matching label.`);
+    console.error(`     Available categories: ${available}`);
+    console.error(`  2. If no existing category fits, add a new category to`);
+    console.error(`     config/taxonomy.json with: id, business_category, labels[],`);
+    console.error(`     osm_tags[], places_type, places_keyword. Use an existing`);
+    console.error(`     category as a template and choose OSM tags from`);
+    console.error(`     https://wiki.openstreetmap.org/wiki/Map_features.`);
+    console.error(`  3. If the industry has no physical-directory presence (e.g. a`);
+    console.error(`     purely online or B2B service), tell the user the Directory`);
+    console.error(`     Scanner cannot enumerate it and fall back to "npm run score"`);
+    console.error(`     with a hand-researched config/candidates.json instead.`);
+    console.error("");
+    console.error("Do NOT guess a category — wrong results are worse than no results.");
+    process.exit(1);
   }
+
+  const categoryId = taxonomy.categories[categoryIndex].id;
+  console.log(`Taxonomy match: ${categoryId}`);
   console.log("");
 
-  const countryIso = (taxonomy.iso_codes as Record<string, string>)[config.country.toLowerCase()] || "US";
+  const countryIso = (taxonomy.iso_codes as Record<string, string>)[config.country.toLowerCase()];
+
+  if (!countryIso) {
+    const available = Object.keys(taxonomy.iso_codes as Record<string, string>).join(", ");
+    console.error(`No ISO code mapping for country "${config.country}".`);
+    console.error("");
+    console.error("AGENT INSTRUCTIONS — resolve this before re-running the scan:");
+    console.error(`  1. Set "country" in ${REQUEST_FILE} to a recognized country name.`);
+    console.error(`     Recognized countries: ${available}`);
+    console.error(`  2. If the country is genuinely missing, add it to the "iso_codes"`);
+    console.error(`     map in config/taxonomy.json (lowercase name -> ISO 3166-1 alpha-2).`);
+    console.error("");
+    console.error("Do NOT guess a country — the scan would target the wrong region.");
+    process.exit(1);
+  }
+
   console.log(`Running scanner (country ISO: ${countryIso})...`);
 
   // Enable region batching for large countries when no city/region specified
@@ -174,13 +210,7 @@ async function main() {
     countryIso
   });
 
-  await saveCandidates(candidates, config);
-  console.log("");
-  console.log(`Saved ${candidates.length} candidates to ${CANDIDATES_FILE}`);
-
-  // Score first to rank candidates, then enrich only the top N (configurable)
-  const topN = Math.min(200, candidates.length);
-
+  // Score all candidates to rank them
   console.log("");
   console.log(`Scoring all ${candidates.length} candidates...`);
 
@@ -191,7 +221,14 @@ async function main() {
 
   scoredCandidates.sort((a, b) => b.score - a.score);
 
+  // Reorder candidates by score and save
+  const rankedCandidates = scoredCandidates.map((sc) => sc.candidate);
+  await saveCandidates(rankedCandidates, config);
+  console.log(`Saved ${rankedCandidates.length} candidates to ${CANDIDATES_FILE} (ranked by fit score)`);
+
   // Enrich the top N candidates (fetch their sites, extract email/phone/contact page)
+  const topN = Math.min(200, rankedCandidates.length);
+  console.log("");
   console.log(`Enriching top ${topN} candidates...`);
 
   const enrichedResults = await enrichCandidates(CANDIDATES_FILE, { maxConcurrency: 3, delayMs: 500, maxCandidates: topN });
@@ -200,7 +237,9 @@ async function main() {
   console.log("");
   console.log("Re-scoring after enrichment...");
 
-  const finalCandidates = enrichedResults.map((r) => r.candidate);
+  // enrichedResults only contains enriched candidates; load full file for final ranking
+  const enrichedFile = JSON.parse(await readFile(CANDIDATES_FILE, "utf8")) as { candidates: CandidateCompany[] };
+  const finalCandidates = enrichedFile.candidates;
 
   const leads = finalCandidates
     .map((candidate, index) => evaluateCandidate(config, candidate))

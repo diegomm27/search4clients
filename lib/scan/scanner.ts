@@ -185,6 +185,19 @@ function buildProviderRequest(request: ScanRequest, sources: SourceEntry[]) {
   const taxonomy = loadTaxonomy();
   const category = taxonomy.categories.find((c: any) => c.id === request.categoryId);
 
+  if (!category) {
+    throw new Error(
+      `Taxonomy category "${request.categoryId}" not found in config/taxonomy.json. ` +
+        `Cannot build a scan query without a valid category — fix the taxonomy or the request industry.`
+    );
+  }
+  if (!category.osm_tags || category.osm_tags.length === 0) {
+    throw new Error(
+      `Taxonomy category "${request.categoryId}" has no osm_tags. ` +
+        `Add osm_tags to this category in config/taxonomy.json so Overpass can be queried.`
+    );
+  }
+
   const hasPlaces = sources.some((s: SourceEntry) => s.id === "google-places" && s.enabled);
 
   return {
@@ -194,9 +207,9 @@ function buildProviderRequest(request: ScanRequest, sources: SourceEntry[]) {
     region: request.region,
     city: request.city,
     regionBboxes: request.regionBboxes,
-    osmTags: category?.osm_tags || [["shop", "books"]],
-    placesType: hasPlaces ? (category?.places_type || null) : null,
-    placesKeyword: hasPlaces ? (category?.places_keyword || request.industry) : null
+    osmTags: category.osm_tags,
+    placesType: hasPlaces ? (category.places_type || null) : null,
+    placesKeyword: hasPlaces ? (category.places_keyword || request.industry) : null
   };
 }
 
