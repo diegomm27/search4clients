@@ -21,7 +21,11 @@ Enumerate real companies from configured directory sources, score fit, and expor
    - Queries each enabled source via the Directory Scanner (`lib/scan/`).
    - Deduplicates results by name + geo + domain.
    - Scores each candidate against the request criteria.
-   - Exports to `output/` in all formats.
+   - **Enriches every candidate** — fetches sites, extracts contact data — then re-scores.
+   - Exports to `output/` every candidate scoring at or above `minimum_score`.
+
+   Enrichment is automatic and built into `npm run scan`. Do not prompt the
+   user to run `npm run enrich` separately as a follow-up step.
 
 5. **Run `npm run leads`** to print the ranked list.
 

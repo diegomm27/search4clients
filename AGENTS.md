@@ -7,11 +7,15 @@ Turn any AI coding CLI into a client-prospecting command center. Enumerate real 
 ## How it works
 
 ```text
-search.request.json  →  npm run scan  →  candidates.json  →  score  →  export  →  output/
+search.request.json  →  npm run scan  →  candidates.json  →  enrich  →  score  →  export  →  output/
                               ↑
                     Directory Scanner
                     (Overpass / Places / browser directories)
 ```
+
+`npm run scan` runs the whole pipeline — it enumerates, **enriches every
+candidate** (fetches sites, extracts contact data), scores, and exports. The
+agent never has to ask the user whether to enrich; it is automatic.
 
 The Directory Scanner (`lib/scan/`) enumerates real companies from structured public sources:
 
@@ -38,7 +42,7 @@ Sources are configured in `config/sources.json`. Categories are mapped in `confi
 2. Ask only for missing required fields: `service_offered`, `industry`, `country`. `city` is optional.
 3. Update `config/search.request.json`.
 4. Run `npm run doctor` to verify setup.
-5. Run `npm run scan` — the scanner enumerates, scores, and exports automatically.
+5. Run `npm run scan` — the scanner enumerates, enriches every candidate, scores, and exports automatically. Do not prompt the user to run enrich separately; it is built in.
 6. Run `npm run leads` to print the ranked list.
 7. Point the user to `output/latest.html` or the timestamped files in `output/`.
 
@@ -73,6 +77,17 @@ Load the relevant mode file before executing each command:
 - Proxy rotation, IP spoofing, or user-agent spoofing to evade detection.
 - Scraping Google Maps, Google Search results, or any Google property other than through the official Places API.
 - Storing or exporting personal data (individual names, personal emails, personal phones). Company-level public data only.
+
+## Request configuration
+
+`config/search.request.json` controls the run. Notable fields:
+
+- `minimum_score` (0–100, default 20) — leads scoring below this are dropped
+  from the exported lists. Keep it low (around 20) so weak-but-plausible
+  candidates survive; only genuinely off-target candidates fall below it.
+  `config/candidates.json` always keeps the full unfiltered set, so re-running
+  `npm run score` with a different threshold re-filters without re-scanning.
+- There is no result cap — every candidate above `minimum_score` is exported.
 
 ## Rules
 
@@ -120,7 +135,7 @@ Each export includes a coverage line: "N companies found across M sources."
 ```bash
 npm run setup        # create config/search.request.json from template
 npm run doctor       # verify setup (Node, Playwright, .env, config files)
-npm run scan         # enumerate → score → export (full automated pipeline)
+npm run scan         # enumerate → enrich → score → export (full automated pipeline)
 npm run websearch    # merge agent web-search findings into candidates.json
 npm run score        # score pre-existing config/candidates.json → export
 npm run leads        # print ranked list from latest output

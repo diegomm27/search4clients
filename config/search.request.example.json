@@ -18,5 +18,6 @@
   "exclude_signals": [
     "large chains",
     "franchises"
-  ]
+  ],
+  "minimum_score": 20
 }

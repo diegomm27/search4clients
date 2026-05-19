@@ -58,9 +58,15 @@ function toExportLead(lead: ReturnType<typeof evaluateCandidate>, index: number,
     suggested_offer: lead.suggested_offer,
     suggested_outreach_angle: lead.suggested_outreach_angle,
     notes: `Lead ${index + 1}`,
+    source_links: lead.sources ?? [],
     created_at: timestamp,
     updated_at: timestamp
   };
+}
+
+// A lead is only actionable if it has at least one public contact channel.
+function isContactable(lead: { website?: string | null; contact_page?: string | null; public_email?: string | null; public_phone?: string | null }) {
+  return Boolean(lead.website || lead.contact_page || lead.public_email || lead.public_phone);
 }
 
 async function writeOutputs(output: EnrichOutput) {
@@ -125,9 +131,12 @@ async function main() {
   console.log("");
   console.log("Re-scoring enriched candidates...");
 
-  const leads = enrichedCandidates
+  const evaluated = enrichedCandidates
     .map((candidate) => evaluateCandidate(config, candidate))
-    .sort((a, b) => b.score - a.score)
+    .sort((a, b) => b.score - a.score);
+  const leads = evaluated
+    .filter((lead) => lead.score >= config.minimum_score)
+    .filter(isContactable)
     .map((lead, index) => toExportLead(lead, index, timestamp));
 
   const output: EnrichOutput = {
@@ -144,7 +153,7 @@ async function main() {
 
   console.log("");
   console.log(`Enrich complete: ${config.name}`);
-  console.log(`Enriched leads: ${leads.length}`);
+  console.log(`Enriched leads: ${leads.length} of ${evaluated.length} scored (minimum score ${config.minimum_score}, with public contact data)`);
   console.log("");
   console.log("Outputs:");
   console.log(`  output/enrich-${id}.html`);

@@ -41,6 +41,7 @@ export const searchConfigSchema = z.object({
   ideal_client_signals: z.array(z.string()).default([]),
   exclude_signals: z.array(z.string()).default([]),
   desired_public_data: z.array(z.enum(desiredPublicData)).default([...defaultDesiredPublicData]),
+  minimum_score: z.number().min(0).max(100).default(20),
   notes: z.string().optional()
 });
 

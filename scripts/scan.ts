@@ -80,9 +80,15 @@ function toExportLead(lead: ReturnType<typeof evaluateCandidate>, index: number,
     suggested_offer: lead.suggested_offer,
     suggested_outreach_angle: lead.suggested_outreach_angle,
     notes: `Lead ${index + 1}`,
+    source_links: lead.sources ?? [],
     created_at: timestamp,
     updated_at: timestamp
   };
+}
+
+// A lead is only actionable if it has at least one public contact channel.
+function isContactable(lead: { website?: string | null; contact_page?: string | null; public_email?: string | null; public_phone?: string | null }) {
+  return Boolean(lead.website || lead.contact_page || lead.public_email || lead.public_phone);
 }
 
 async function writeOutputs(output: ScanOutput) {
@@ -226,12 +232,12 @@ async function main() {
   await saveCandidates(rankedCandidates, config);
   console.log(`Saved ${rankedCandidates.length} candidates to ${CANDIDATES_FILE} (ranked by fit score)`);
 
-  // Enrich the top N candidates (fetch their sites, extract email/phone/contact page)
-  const topN = Math.min(200, rankedCandidates.length);
+  // Enrich every candidate (fetch their sites, extract email/phone/contact page).
+  // Enrichment is part of the automated pipeline — no separate manual step.
   console.log("");
-  console.log(`Enriching top ${topN} candidates...`);
+  console.log(`Enriching all ${rankedCandidates.length} candidates (fetch sites, extract contact data)...`);
 
-  const enrichedResults = await enrichCandidates(CANDIDATES_FILE, { maxConcurrency: 3, delayMs: 500, maxCandidates: topN });
+  await enrichCandidates(CANDIDATES_FILE, { maxConcurrency: 3, delayMs: 500 });
 
   // Re-score after enrichment since contact data affects scores
   console.log("");
@@ -241,9 +247,12 @@ async function main() {
   const enrichedFile = JSON.parse(await readFile(CANDIDATES_FILE, "utf8")) as { candidates: CandidateCompany[] };
   const finalCandidates = enrichedFile.candidates;
 
-  const leads = finalCandidates
-    .map((candidate, index) => evaluateCandidate(config, candidate))
-    .sort((a, b) => b.score - a.score)
+  const evaluated = finalCandidates
+    .map((candidate) => evaluateCandidate(config, candidate))
+    .sort((a, b) => b.score - a.score);
+  const leads = evaluated
+    .filter((lead) => lead.score >= config.minimum_score)
+    .filter(isContactable)
     .map((lead, index) => toExportLead(lead, index, timestamp));
 
   const output: ScanOutput = {
@@ -261,7 +270,7 @@ async function main() {
   const withContact = leads.filter((l) => l.public_email || l.public_phone).length;
   console.log("");
   console.log(`Scan complete: ${config.name}`);
-  console.log(`Potential clients found: ${leads.length} (full list, ranked by fit score)`);
+  console.log(`Potential clients found: ${leads.length} of ${evaluated.length} scored (minimum score ${config.minimum_score}, with public contact data)`);
   console.log(`With contact data (email/phone): ${withContact}`);
   console.log("");
   console.log("Outputs:");

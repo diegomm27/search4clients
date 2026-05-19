@@ -19,33 +19,25 @@ export type ExportLead = {
   suggested_offer: string | null;
   suggested_outreach_angle: string | null;
   notes: string;
+  source_links: string[];
   created_at: Date | string;
   updated_at: Date | string;
 };
 
-const fields: Array<keyof ExportLead> = [
+// Columns exported to CSV. Trimmed to fields that carry per-lead signal —
+// boilerplate, always-empty, and constant columns are intentionally omitted.
+const csvFields: Array<keyof ExportLead> = [
   "company_name",
-  "country",
-  "region",
   "city",
-  "industry",
-  "business_category",
+  "country",
+  "score",
+  "fit_grade",
+  "contactability_score",
   "website",
   "contact_page",
   "public_email",
   "public_phone",
-  "linkedin_company_page",
-  "score",
-  "fit_grade",
-  "contactability_score",
-  "confidence_score",
-  "status",
-  "reason_for_fit",
-  "suggested_offer",
-  "suggested_outreach_angle",
-  "notes",
-  "created_at",
-  "updated_at"
+  "source_links"
 ];
 
 function fitTier(score: number) {
@@ -61,12 +53,20 @@ function cell(value: unknown) {
   return String(value);
 }
 
+// CSV-safe cell: arrays become "; "-joined, and any embedded newline/tab is
+// collapsed to a space so every record stays on exactly one physical line.
+function csvCell(value: unknown) {
+  const raw = Array.isArray(value) ? value.join("; ") : cell(value);
+  return raw.replace(/[\r\n\t]+/g, " ").replace(/ {2,}/g, " ").trim();
+}
+
 export function leadsToCsv(leads: ExportLead[]) {
-  const rows = [fields.join(",")];
+  const rows = [csvFields.join(",")];
   for (const lead of leads) {
-    rows.push(fields.map((field) => `"${cell(lead[field]).replace(/"/g, '""')}"`).join(","));
+    rows.push(csvFields.map((field) => `"${csvCell(lead[field]).replace(/"/g, '""')}"`).join(","));
   }
-  return rows.join("\n");
+  // UTF-8 BOM so Excel renders accented names correctly; CRLF per RFC 4180.
+  return "﻿" + rows.join("\r\n") + "\r\n";
 }
 
 export function leadsToMarkdown(leads: ExportLead[]) {
