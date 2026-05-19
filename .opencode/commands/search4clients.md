@@ -23,19 +23,41 @@ Read `AGENTS.md` first. This is a command-based workflow.
 - **Score only**: If you have a hand-written `candidates.json` (e.g., from manual research),
   run `npm run score` to score and rank them. **Never** use `npm run scan` for hand-written
   files — it overwrites `candidates.json`.
+- **Web search supplement**: To fill gaps the structured scanner missed, load
+  `modes/websearch.md`, search the open web province-by-province (in the country's primary
+  language where it helps), write `config/websearch-findings.json`, then run
+  `npm run websearch` to merge into `candidates.json` and `npm run score`. Web search
+  **samples** — it is a supplement to `npm run scan`, not a replacement.
+
+## Handling scan failures
+
+`npm run scan` exits non-zero with printed `AGENT INSTRUCTIONS` when it cannot run
+safely. It will **not** guess a category or country — wrong inputs yield unrelated,
+useless results. Read the message and act:
+
+- **No taxonomy category matches the industry.** Either re-point `industry` in the
+  request to an existing category's label, add a new correct category to
+  `config/taxonomy.json` (and confirm it with the user), or — if the industry has
+  no physical-directory footprint — hand-research `config/candidates.json` and run
+  `npm run score`.
+- **No ISO code mapping for the country.** Re-point `country` to a recognized name
+  or add it to the `iso_codes` map in `config/taxonomy.json`.
+
+Never force a taxonomy match you are not confident is correct.
 
 ## Slash command modes
 
 Load the relevant mode file before executing each command:
 
-| Command                    | Mode file          | What it does                               |
-| -------------------------- | ------------------ | ------------------------------------------ |
-| `/search4clients`          | —                  | Show all commands, then run primary flow   |
-| `/search4clients scan`     | `modes/scan.md`    | Enumerate companies via Directory Scanner  |
-| `/search4clients enrich`   | `modes/enrich.md`  | Fetch company sites, detect signals        |
-| `/search4clients score`    | `modes/score.md`   | Score and rank pre-existing candidates     |
-| `/search4clients export`   | `modes/export.md`  | Export to HTML/CSV/MD                      |
-| `/search4clients batch`    | `modes/batch.md`   | Parallel multi-region or multi-category scan |
+| Command                     | Mode file            | What it does                                 |
+| --------------------------- | -------------------- | -------------------------------------------- |
+| `/search4clients`           | —                    | Show all commands, then run primary flow     |
+| `/search4clients scan`      | `modes/scan.md`      | Enumerate companies via Directory Scanner    |
+| `/search4clients websearch` | `modes/websearch.md` | Open-web search to supplement the scanner    |
+| `/search4clients enrich`    | `modes/enrich.md`    | Fetch company sites, detect signals          |
+| `/search4clients score`     | `modes/score.md`     | Score and rank pre-existing candidates       |
+| `/search4clients export`    | `modes/export.md`    | Export to HTML/CSV/MD                        |
+| `/search4clients batch`     | `modes/batch.md`     | Parallel multi-region or multi-category scan |
 
 ## Guardrails
 

@@ -46,14 +46,15 @@ Sources are configured in `config/sources.json`. Categories are mapped in `confi
 
 Load the relevant mode file before executing each command:
 
-| Command                    | Mode file          | What it does                               |
-| -------------------------- | ------------------ | ------------------------------------------ |
-| `/search4clients`          | —                  | Show all commands, then run primary flow   |
-| `/search4clients scan`     | `modes/scan.md`    | Enumerate companies via Directory Scanner  |
-| `/search4clients enrich`   | `modes/enrich.md`  | Fetch company sites, detect signals        |
-| `/search4clients score`    | `modes/score.md`   | Score and rank pre-existing candidates     |
-| `/search4clients export`   | `modes/export.md`  | Export to HTML/CSV/MD                      |
-| `/search4clients batch`    | `modes/batch.md`   | Parallel multi-region or multi-category scan |
+| Command                     | Mode file            | What it does                                 |
+| --------------------------- | -------------------- | -------------------------------------------- |
+| `/search4clients`           | —                    | Show all commands, then run primary flow     |
+| `/search4clients scan`      | `modes/scan.md`      | Enumerate companies via Directory Scanner    |
+| `/search4clients websearch` | `modes/websearch.md` | Open-web search to supplement the scanner    |
+| `/search4clients enrich`    | `modes/enrich.md`    | Fetch company sites, detect signals          |
+| `/search4clients score`     | `modes/score.md`     | Score and rank pre-existing candidates       |
+| `/search4clients export`    | `modes/export.md`    | Export to HTML/CSV/MD                        |
+| `/search4clients batch`     | `modes/batch.md`     | Parallel multi-region or multi-category scan |
 
 ## Scanning policy
 
@@ -82,6 +83,24 @@ Load the relevant mode file before executing each command:
 - If `config/sources.json` has no enabled source for the requested country or category, say so clearly and ask whether to proceed with Overpass/Places only or to add a new source entry.
 - Do not add or enable a browser directory source without confirming the site's `robots.txt` and ToS permit automated pagination.
 
+## Handling scan failures
+
+`npm run scan` exits non-zero with printed `AGENT INSTRUCTIONS` when it cannot run
+safely. It will **not** guess a category or country — wrong inputs yield unrelated,
+useless results. When the scan fails, read the message and act:
+
+- **No taxonomy category matches the industry.** The industry is missing from
+  `config/taxonomy.json`. Either (a) re-point `industry` in the request to an
+  existing category's label, (b) add a new, correct category to `taxonomy.json`
+  (`id`, `business_category`, `labels[]`, `osm_tags[]`, `places_type`,
+  `places_keyword`) and confirm it with the user, or (c) if the industry has no
+  physical-directory footprint, tell the user and fall back to a hand-researched
+  `config/candidates.json` scored via `npm run score`.
+- **No ISO code mapping for the country.** Re-point `country` to a recognized
+  name, or add it to the `iso_codes` map in `config/taxonomy.json`.
+
+Never force a taxonomy match you are not confident is correct.
+
 ## Output
 
 After `npm run scan`:
@@ -102,8 +121,32 @@ Each export includes a coverage line: "N companies found across M sources."
 npm run setup        # create config/search.request.json from template
 npm run doctor       # verify setup (Node, Playwright, .env, config files)
 npm run scan         # enumerate → score → export (full automated pipeline)
+npm run websearch    # merge agent web-search findings into candidates.json
 npm run score        # score pre-existing config/candidates.json → export
 npm run leads        # print ranked list from latest output
 npm run export -- --format html --out output/leads.html
 npm run typecheck    # type-check only (no emit)
 ```
+
+## Web search supplement
+
+The structured scanner (`npm run scan`) enumerates from OSM but inevitably
+misses businesses — unmapped shops, weak-coverage regions, industries with thin
+directory presence. The web-search supplement lets the agent fill those gaps by
+searching the open web.
+
+Because `npm run scan` is pure deterministic code with no search capability,
+this is a **two-step, agent-driven** flow:
+
+1. The agent loads `modes/websearch.md` and searches the open web — province by
+   province, in the country's primary language where that yields better results
+   — extracting real businesses into `config/websearch-findings.json`.
+2. `npm run websearch` validates that file and merges it into
+   `config/candidates.json` (deduplicating against existing candidates), then
+   the agent runs `npm run score`.
+
+**Web search samples, it does not enumerate.** Results are whatever the search
+engine surfaces, not a complete census. Every web-sourced candidate is therefore
+tagged `needs-verification (web-search sourced)` so the exported report stays
+honest about provenance. Use web search as a supplement to `npm run scan`, not a
+replacement for it.

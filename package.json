@@ -19,6 +19,7 @@
     "setup": "tsx scripts/setup.ts",
     "doctor": "tsx scripts/doctor.ts",
     "scan": "tsx scripts/scan.ts",
+    "websearch": "tsx scripts/websearch-merge.ts",
     "score": "tsx scripts/search.ts",
     "leads": "tsx scripts/leads.ts",
     "export": "tsx scripts/export.ts",

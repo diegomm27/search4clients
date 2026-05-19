@@ -6,6 +6,7 @@ Find real potential B2B clients by enumerating companies from public directories
 
 - `/search4clients` - show the workflow and required request file.
 - `/search4clients scan` - enumerate companies via Directory Scanner, score, and export.
+- `/search4clients websearch` - open-web search to supplement the scanner; see `modes/websearch.md`.
 - `/search4clients enrich` - fetch company sites, extract contact data, detect signals.
 - `/search4clients score` - score and rank pre-existing candidates.
 - `/search4clients export` - export the latest scan to CSV/Markdown/JSON/HTML.
@@ -31,6 +32,35 @@ Find real potential B2B clients by enumerating companies from public directories
 - **Enrich only**: If you already have `config/candidates.json`, run `npm run enrich`.
 - **Score only**: If you have a hand-written `candidates.json`, run `npm run score`.
   **Never** use `npm run scan` for hand-written files — it overwrites `candidates.json`.
+- **Web search supplement**: To fill gaps the structured scanner missed, load
+  `modes/websearch.md`, search the open web province-by-province (in the country's
+  primary language where it helps), write `config/websearch-findings.json`, then
+  run `npm run websearch` to merge into `candidates.json` and `npm run score`.
+  Web search **samples** — it is a supplement to `npm run scan`, not a replacement.
+
+## Handling scan failures
+
+`npm run scan` exits with a non-zero code and printed AGENT INSTRUCTIONS when it
+cannot run safely. Do not retry blindly — read the message and act:
+
+- **"No taxonomy category matches industry"** — the industry has no entry in
+  `config/taxonomy.json`. The scanner will not guess a category, because scanning
+  the wrong one returns unrelated results.
+  1. If an existing category fits, set `industry` in `config/search.request.json`
+     to one of that category's labels and re-run.
+  2. If none fits, add a new category to `config/taxonomy.json` (`id`,
+     `business_category`, `labels[]`, `osm_tags[]`, `places_type`,
+     `places_keyword`). Copy an existing category as a template; pick OSM tags
+     from the OpenStreetMap Map Features wiki. Confirm the new category with the
+     user before scanning.
+  3. If the industry has no physical-directory presence (purely online/B2B
+     service), tell the user the Directory Scanner cannot enumerate it. Fall back
+     to hand-researching `config/candidates.json` and running `npm run score`.
+- **"No ISO code mapping for country"** — set `country` to a recognized name, or
+  add the country to the `iso_codes` map in `config/taxonomy.json`.
+
+Never edit `config/taxonomy.json` to force a match without confirming it is a
+genuine, correct mapping. Wrong results are worse than no results.
 
 ## Guardrails
 

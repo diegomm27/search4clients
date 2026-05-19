@@ -19,6 +19,24 @@ Alternative flows:
 - Enrich only: If you already have config/candidates.json, run npm run enrich.
 - Score only: If you have a hand-written candidates.json, run npm run score.
   Never use npm run scan for hand-written files — it overwrites candidates.json.
+- Web search supplement: To fill gaps the structured scanner missed, load
+  modes/websearch.md, search the open web province-by-province (in the country's
+  primary language where it helps), write config/websearch-findings.json, then
+  run npm run websearch to merge into candidates.json and npm run score. Web
+  search samples — it is a supplement to npm run scan, not a replacement.
+
+Handling scan failures:
+npm run scan exits non-zero with printed AGENT INSTRUCTIONS when it cannot run
+safely. It will not guess a category or country — wrong inputs yield unrelated,
+useless results. Read the message and act:
+- No taxonomy category matches the industry: re-point industry in the request to
+  an existing category's label, or add a new correct category to
+  config/taxonomy.json (confirm it with the user), or — if the industry has no
+  physical-directory footprint — hand-research config/candidates.json and run
+  npm run score.
+- No ISO code mapping for the country: re-point country to a recognized name or
+  add it to the iso_codes map in config/taxonomy.json.
+Never force a taxonomy match you are not confident is correct.
 
 Guardrails:
 - Use only public business data. Never invent companies, contacts, or source
