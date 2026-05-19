@@ -1,4 +1,4 @@
-# search4clients — Product Plan
+# search4clients — Roadmap
 
 **Positioning:** the sell-side mirror of career-ops. An agent-first, multi-CLI command center that turns any AI coding CLI into a client-prospecting engine — it *enumerates* a market (not samples it), scores fit, and exports a reviewable lead list. Git-clone, run, own your data.
 
@@ -288,3 +288,227 @@ actually invokes. R4–R6 are incremental coverage gains.
 
 **All Phase 7 remediation items are complete.** TypeScript compiles cleanly (zero errors)
 and all 29 tests pass.
+
+### Phase 7 follow-up fixes (2026-05-19)
+
+A later review found the Phase 7 code did not fully match its own claims. The
+following were fixed:
+
+- **Overpass queried `node` only.** `overpass.ts` built `node["shop"="books"]`, so
+  shops mapped as building **ways** or **relations** (a large share of OSM POIs) were
+  invisible. Changed to `nwr[...]` + `out center qt;`; `parseResponse()` and the XML
+  parser now handle ways/relations and read center coordinates. Expected 2–4× more raw
+  records on storefront categories.
+- **Enrichment ran before ranking.** `scan.ts` scored and sorted candidates, then threw
+  the sort away and enriched the first 200 by *scan order*. Rewrote so candidates are
+  ranked by fit score, saved in that order, then the top 200 enriched.
+- **Export silently dropped candidates past 200.** The export used only the enriched
+  subset. Now it reloads the full `candidates.json` (all candidates, top 200 enriched)
+  so nothing is dropped.
+- **Silent wrong-result fallbacks removed.** `scan.ts` defaulted an unmatched industry
+  to the `bookstore` category and an unmatched country to `US`. Both now exit non-zero
+  with printed `AGENT INSTRUCTIONS`. `buildProviderRequest()` no longer defaults
+  `osmTags` to `[["shop","books"]]` — it throws on a missing/tagless category.
+
+**Known issue still open:** the `region` parameter is not used in Overpass area
+filtering — city/region-scoped requests fall back to the country bounding box.
+
+---
+
+## Phase 8 — Drop Google Places, commit fully to the open-source path ⬜ PENDING
+
+**Motivation.** The project's promise is "git-clone, run, own your data" — anyone with a
+product can get a lead list with **zero setup cost**. Google Places breaks that promise:
+it requires a Google Cloud account, a billing-enabled API key, and is a paid service.
+Most users will never set it up. Keeping it creates a misleading two-tier experience —
+the README implies full coverage, but the default keyless run is OSM-only. Worse, every
+instruction file, the doctor, and the scoring all carry Places-specific branches that
+exist for a minority of users and add maintenance surface for everyone.
+
+**Decision (locked):** remove Google Places entirely. OSM Overpass becomes the single
+API provider; browser directories remain the per-source ToS-checked fallback. This makes
+the default run *the* run — no key, no tier, no surprise coverage cliff.
+
+> This phase is **plan only** — do not implement until explicitly approved.
+
+### 8.1 — Remove the provider and its wiring
+
+- [ ] Delete `lib/scan/providers/places.ts` (162 lines).
+- [ ] `lib/scan/scanner.ts` — remove `PlacesProvider` import, the `hasPlaces` detection,
+      the `google-places` branch in `createProviders()`, and the `placesType` /
+      `placesKeyword` fields from `buildProviderRequest()`.
+- [ ] `lib/scan/types.ts` — remove `placesType` and `placesKeyword` from `ProviderRequest`.
+- [ ] `config/sources.json` — remove the `google-places` source entry.
+- [ ] `config/taxonomy.json` — the `places_type` / `places_keyword` fields on every
+      category become dead. Leave them for now (harmless, and a future provider could
+      reuse the concept) **or** strip them — decide at implementation time. Default: strip,
+      to keep the taxonomy honest about what the scanner actually uses.
+
+### 8.2 — Remove key handling and doctor checks
+
+- [ ] `scripts/doctor.ts` — remove the `GOOGLE_PLACES_API_KEY` check (lines ~20, 30–33).
+      The doctor should no longer mention Places at all.
+- [ ] `.env.example` — remove the `GOOGLE_PLACES_API_KEY` line. If that leaves `.env.example`
+      empty, keep the file with a comment explaining no keys are required.
+
+### 8.3 — Remove Places from scoring and agent instructions
+
+- [ ] `lib/evaluate/evaluate.ts` — no direct Places reference, but re-verify scoring does
+      not assume Places-only fields.
+- [ ] Update all four CLI instruction files — `AGENTS.md`, `.claude/commands/search4clients.md`,
+      `.opencode/commands/search4clients.md`, `.gemini/commands/search4clients.toml` —
+      to remove every mention of Google Places / Places API. The source table in `AGENTS.md`
+      drops the `Google Places API` row.
+- [ ] `modes/scan.md`, `modes/batch.md`, `modes/_shared.md` — remove Places references.
+
+### 8.4 — Update tests and docs
+
+- [ ] `tests/coverage.test.ts` — remove any Places fixtures/assertions.
+- [ ] READMEs (all languages) — remove Places from the feature matrix and quickstart;
+      reframe the headline as "100% free, no API keys, OSM-powered."
+- [ ] Any `examples/` request files that imply Places coverage — review and adjust copy.
+
+**Done when:** `grep -ri "places" lib scripts config modes *.md` returns nothing
+Places-related, `npm run scan` works key-free exactly as before, typecheck passes, and
+tests are green.
+
+---
+
+## Phase 9 — Province-level region batching for Spain ⬜ PENDING
+
+**Motivation.** The scanner already batches large countries by sub-region (`runBatchScan`
+in `scanner.ts`), but for Spain `config/region-mapping.json` lists only the **17
+autonomous communities**. Each community is scanned as one Overpass bounding-box query.
+Large, POI-dense communities (Andalucía, Cataluña, Castilla y León) produce big result
+sets in a single query — risking Overpass timeouts and silent truncation at the `out`
+cap. Splitting Spain into its **~52 provinces** yields smaller, faster, more reliable
+queries and measurably better completeness, with **zero logic change** — the batch loop
+already iterates whatever regions it is given. This is purely a data extension.
+
+> This phase is **plan only** — do not implement until explicitly approved.
+
+### 9.1 — Extend `config/region-mapping.json` for ES
+
+- [ ] Replace the 17 autonomous-community entries under `ES` with the 50 mainland
+      provinces plus the 2 island provinces and the 2 autonomous cities
+      (Ceuta, Melilla) — ~52 entries total. Use the official Spanish province names
+      (e.g. "Badajoz", "Cáceres", "Sevilla", "A Coruña", "Gipuzkoa").
+- [ ] **Open question to resolve at implementation:** whether to also keep autonomous
+      communities. Recommended: replace, not add — finer is strictly better for batching,
+      and mixing both granularities would double-count. Dedup would catch overlaps but
+      waste queries.
+
+### 9.2 — Extend `config/region-bboxes.json` for ES
+
+- [ ] Add a bounding box `[minLat, minLon, maxLat, maxLon]` for each of the ~52 provinces.
+      Province bboxes are tighter than community bboxes, so adjacent-province overlap is
+      small; the existing `deduplicate()` in `scanner.ts` (name + phone + website + geo)
+      already absorbs any double-counted records on shared borders.
+- [ ] Sanity-check each bbox covers the province without spilling far into the sea or a
+      neighbouring country. Canarias and Baleares provinces need their own island boxes.
+
+### 9.3 — Verify the batch loop scales to ~52 regions
+
+- [ ] `runBatchScan()` iterates regions sequentially with a polite delay between Overpass
+      calls. 52 regions × ~1 s delay ≈ under 2 minutes of pacing overhead — acceptable.
+      Confirm no per-run cap assumes a small region count.
+- [ ] Confirm the cache keys in `overpass.ts` are per-bbox (they hash the full query), so
+      re-running Spain is incremental and offline-friendly.
+
+### 9.4 — Generalise the granularity decision (optional, same phase)
+
+- [ ] Province-level data for *every* country would bloat `region-mapping.json`. Keep
+      granularity **adaptive**: ship province-level only for large/POI-dense countries
+      where the gain is real (start with ES; ES is the reference case). Smaller countries
+      stay at state/community level. Document this principle in `CONTRIBUTING.md` so
+      contributors know not to blindly max out granularity everywhere.
+
+**Done when:** a Spain scan splits into ~52 province queries, unions and deduplicates
+results, and returns a strictly larger raw-record count than the 17-community version on
+the same category — with no Overpass timeouts.
+
+### Note on querying "in Spanish"
+
+The instinct to "search in Spanish for better results" applies to a layer the scanner
+does **not** use. OSM tag queries (`shop=books`) are language-neutral — identical
+worldwide. The scanner resolves areas by **bounding box**, not by place name, so
+Spanish-vs-Catalan spelling of region names (Cataluña / Catalunya) never enters a query.
+The `name` tag on each result already holds whatever local-language name the mapper
+entered. Therefore **no "Spanish-language" change is needed** for the Overpass path —
+the bbox approach already sidesteps it. (This note exists so a future contributor does
+not re-litigate a non-issue.)
+
+---
+
+## Phase 10 — Agent web-search supplement ✅ COMPLETE
+
+**Motivation.** The structured scanner (OSM Overpass) enumerates, but inevitably
+misses businesses — unmapped shops, weak-coverage regions, industries with thin
+directory presence. To fill those gaps, the agent searches the open web,
+province by province, and feeds its findings back into the pipeline.
+
+**Design constraint.** `npm run scan` is pure deterministic code with no LLM
+access — it cannot perform searches. The web-search supplement is therefore a
+**two-part, agent-driven flow**: the agent (Claude / Gemini CLI) does the
+searches and writes a findings file; a CLI script validates and merges it.
+
+**Honest scope.** Open-web search **samples** — it returns whatever the search
+engine surfaces, not a complete census. This is deliberately *not* enumeration.
+Every web-sourced candidate is tagged `needs-verification (web-search sourced)`
+and its sources carry a `websearch:` prefix, so the exported report never
+presents search results as complete structured data. Web search is a
+**supplement** to `npm run scan`, never a replacement.
+
+### 10.1 — Ingestion layer ✅ COMPLETE
+
+- [x] `lib/scan/websearch.ts` — Zod schema for the agent-produced findings file
+      (`webSearchFindingsSchema`), `loadWebSearchFindings()`, and
+      `findingsToCandidates()`. Each finding requires a non-empty `company_name`
+      and at least one `source_urls` entry — a finding the agent cannot point to
+      a real page is rejected. Converted candidates are tagged with the
+      `websearch:` source prefix and the `needs-verification` signal.
+
+### 10.2 — Merge script ✅ COMPLETE
+
+- [x] `scripts/websearch-merge.ts` (`npm run websearch`) — reads
+      `config/websearch-findings.json`, validates it, converts findings to
+      candidates, deduplicates against any existing `config/candidates.json`
+      (by name + phone + website), and writes the merged set back. Reads the
+      request file tolerantly so an off-enum `desired_public_data` value cannot
+      break the merge. The user then runs `npm run score`.
+- [x] `npm run websearch` wired into `package.json`.
+
+### 10.3 — Agent instructions ✅ COMPLETE
+
+- [x] `modes/websearch.md` — instructs the agent to iterate province by province,
+      search in the country's primary language where it yields better results
+      (`librerías en Badajoz`, not `bookstores in Badajoz`), extract only real
+      businesses seen on real pages, never invent contact data, respect
+      robots.txt / rate limits / paywalls, and write the findings file.
+- [x] `AGENTS.md` — added the `/search4clients websearch` command row, a
+      "Web search supplement" section, and `npm run websearch` to dev commands.
+- [x] `.claude/`, `.opencode/`, `.gemini/` command files — documented the
+      web-search supplement flow.
+
+**Done:** `npm run websearch` validates, merges, and deduplicates an agent
+findings file; schema rejects findings with no source URL; re-running is
+idempotent; web-sourced candidates are unambiguously tagged. Typecheck clean,
+24 tests pass.
+
+**Flow for the user:** `npm run scan` → agent runs `/search4clients websearch`
+(searches provinces, writes `config/websearch-findings.json`) → `npm run
+websearch` (merge) → `npm run score`.
+
+---
+
+## Phase sequencing (updated)
+
+| Phase | Depends on | Can overlap with |
+| --- | --- | --- |
+| 8 — Drop Google Places | 7 | 9 |
+| 9 — ES province batching | 7 | 8 |
+| 10 — Agent web-search supplement | 7 | 8, 9 |
+
+Phases 8 and 9 are independent and may be done in either order. Phase 8 is broader
+(touches ~18 files) but mostly deletion; Phase 9 is narrow (two config files) but
+requires careful bbox data.
