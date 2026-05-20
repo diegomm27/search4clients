@@ -40,3 +40,6 @@ prisma/dev.db-journal
 
 # Coverage
 coverage/
+
+# Local notes / chat transcripts
+example.md

@@ -22,7 +22,7 @@ npm run scan                 ->  enumerate companies from public directories
     inside your agent)            score and rank every one
         |
         v
-output/latest.html           ->  your ranked list of potential clients
+output/search-<timestamp>.*  ->  your ranked list of potential clients
 ```
 
 `npm run scan` runs the whole pipeline in one step — it enumerates, enriches,
@@ -116,38 +116,17 @@ scores them by fit, and writes the report.
 
 ### 5. Get your list
 
-Open the ranked report in your browser:
-
-```text
-output/latest.html
-```
-
-Or print the ranked list in your terminal:
+Print the ranked list in your terminal:
 
 ```bash
 npm run leads
 ```
 
+For a browser-friendly report, open the newest `output/search-<timestamp>.html`
+file in `output/`.
+
 That's it — a reviewed, scored list of potential clients ready for manual
 outreach.
-
-## Do I need `npm run enrich`?
-
-**Usually no.** `npm run scan` already enriches every company it finds —
-fetching websites and extracting public emails, phones, and contact pages. After
-a normal scan there is nothing extra to run.
-
-Run `npm run enrich` only when your `config/candidates.json` came from somewhere
-other than the scanner — for example, companies your agent gathered from a web
-search — and you want to collect their contact data before scoring:
-
-```bash
-npm run enrich   # fetch sites + public contact data for config/candidates.json
-npm run score    # score and export the enriched candidates
-```
-
-It is also safe to re-run on an existing candidates file to retry websites that
-failed the first time.
 
 ## The request file
 
@@ -168,17 +147,13 @@ contact channel is returned, ranked by fit.
 
 ## Outputs
 
-Each run writes timestamped files plus a `latest` copy of each:
+Each run writes timestamped files:
 
 ```text
 output/search-<timestamp>.html   human-readable report
 output/search-<timestamp>.csv    for spreadsheets
 output/search-<timestamp>.md     for agents and docs
 output/search-<timestamp>.json   full structured data
-output/latest.html               most recent run
-output/latest.csv
-output/latest.md
-output/latest.json
 ```
 
 Re-export the latest run in any format:
