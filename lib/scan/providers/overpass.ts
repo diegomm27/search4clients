@@ -27,14 +27,16 @@ export class OverpassProvider implements ScanProvider {
 
     const tagQuery = osmTags.map(([k, v]) => `nwr["${k}"="${v}"]`).join("");
 
-    // Build area filter: bounding box > city > region > country
+    // Build area filter: region area > country area > region bbox > nothing
     const regionVal = region ?? undefined;
-    let areaFilter = this.buildAreaFilter(tagQuery, city, regionVal, countryIso, request.regionBboxes);
+    const regionIso = request.regionIso ?? undefined;
+    const { preamble, suffix } = this.buildAreaFilter(regionVal, regionIso, countryIso, request.regionBboxes);
 
     // Use nwr (node/way/relation) + out center to get coordinates from all element types
     const query = `
       [out:json][timeout:60];
-      ${areaFilter ? `${tagQuery}${areaFilter}` : `${tagQuery}nwr();`}
+      ${preamble}
+      ${suffix ? `${tagQuery}${suffix}` : `${tagQuery}nwr();`}
       out center qt;
     `.replace(/\s+/g, " ").trim();
 
@@ -83,42 +85,35 @@ export class OverpassProvider implements ScanProvider {
 
   /**
    * Build area filter for Overpass QL.
-   * Uses bounding boxes because OSM area name lookups fail for many regions.
-   * Returns only the bbox portion with trailing semicolon (tagQuery is prepended in scan()).
+   * Prefers real administrative boundaries (Overpass areas keyed by ISO 3166
+   * codes) over bounding boxes: bboxes of regions and countries always bleed
+   * into neighboring areas (e.g. the La Rioja bbox includes Soria and Viana).
+   * Returns the preamble statement to place before the tag query and the
+   * suffix to append to it (bbox filter, empty when nothing applies).
    */
   private buildAreaFilter(
-    tagQuery: string,
-    city: string | null | undefined,
     region: string | null | undefined,
+    regionIso: string | null | undefined,
     countryIso: string,
     regionBboxes?: Record<string, [number, number, number, number]>
-  ): string {
+  ): { preamble: string; suffix: string } {
+    if (region && regionIso) {
+      return {
+        preamble: `area["ISO3166-2"="${regionIso}"]->.searchArea;`,
+        suffix: "(area.searchArea);"
+      };
+    }
     if (region && regionBboxes?.[region]) {
       const [minLat, minLon, maxLat, maxLon] = regionBboxes[region];
-      return `(${minLat},${minLon},${maxLat},${maxLon});`;
+      return { preamble: "", suffix: `(${minLat},${minLon},${maxLat},${maxLon});` };
     }
     if (countryIso) {
-      return `(${this.getCountryBbox(countryIso)});`;
+      return {
+        preamble: `area["ISO3166-1"="${countryIso}"]->.searchArea;`,
+        suffix: "(area.searchArea);"
+      };
     }
-    return "";
-  }
-
-  /** Return a bounding box string for a country ISO code. */
-  private getCountryBbox(iso: string): string {
-    // Approximate bounding boxes for major countries
-    const bboxes: Record<string, string> = {
-      ES: "35.5,-11.5,44.0,4.5",
-      DE: "47.0,5.5,55.1,15.2",
-      FR: "42.0,-5.2,51.1,8.2",
-      IT: "36.5,6.3,47.1,18.6",
-      US: "24.0,-125.0,49.0,-66.0",
-      GB: "49.9,-8.5,59.4,2.0",
-      BR: "-33.8,-73.9,5.3,29.4",
-      AR: "-55.1,-73.7,21.8,69.1",
-      CA: "41.7,-141.0,83.1,-52.6",
-      JP: "24.0,122.0,46.0,146.0",
-    };
-    return bboxes[iso] || "-90,-180,90,180";
+    return { preamble: "", suffix: "" };
   }
 
   private parseResponse(data: Record<string, unknown>): RawRecord[] {
@@ -173,7 +168,12 @@ export class OverpassProvider implements ScanProvider {
           office: tags.office,
           sport: tags.sport,
           addr_postcode: addrPostcode,
-          addr_country: addrCountry
+          addr_country: addrCountry,
+          // `brand` marks OSM locations that belong to a chain or franchise
+          // (chains tag brand + brand:wikidata); operator is the parent brand
+          // for franchisees. Used downstream to detect and exclude chains.
+          brand: tags.brand,
+          operator: tags.operator
         }
       });
     }
