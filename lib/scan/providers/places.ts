@@ -1,6 +1,7 @@
 import { readFile, writeFile, mkdir } from "fs/promises";
 import { existsSync } from "fs";
 import path from "path";
+import { createHash } from "crypto";
 import { type RawRecord, type ProviderRequest, type ScanOptions, type ScanProvider } from "@/lib/scan/types";
 
 const PLACES_URL = "https://places.googleapis.com/v1/places:textSearch";
@@ -25,14 +26,15 @@ export class PlacesProvider implements ScanProvider {
     const country = request.countryIso;
 
     const cacheKey = [keyword, locationHint, country].filter(Boolean).join("--");
-    const cachedPath = path.join(opts.cacheDir, `places-${Buffer.from(cacheKey).toString("base64url").slice(0, 48)}.json`);
+    const cacheHash = createHash("sha1").update(cacheKey).digest("hex").slice(0, 16);
+    const cachedPath = path.join(opts.cacheDir, `places-${cacheHash}.json`);
 
     if (existsSync(cachedPath)) {
       const raw = await readFile(cachedPath, "utf8");
       return this.parseResponse(JSON.parse(raw));
     }
 
-    const allResults: RawRecord[] = [];
+    const rawPlaces: Array<Record<string, unknown>> = [];
     let pageToken: string | undefined;
     let pagesFetched = 0;
 
@@ -42,7 +44,9 @@ export class PlacesProvider implements ScanProvider {
       "places.displayName",
       "places.formattedAddress",
       "places.location",
-      "places.phoneNumber",
+      "places.nationalPhoneNumber",
+      "places.internationalPhoneNumber",
+      "nextPageToken",
       "places.websiteUri",
       "places.regularOpeningHours",
       "places.rating",
@@ -88,20 +92,21 @@ export class PlacesProvider implements ScanProvider {
 
       if (results.length === 0) break;
 
-      allResults.push(...this.parsePlaceResults(results));
+      rawPlaces.push(...results);
 
       pageToken = (data.nextPageToken as string) || undefined;
       pagesFetched++;
 
       if (!pageToken) break;
-
-      if (opts.cacheDir) {
-        await mkdir(opts.cacheDir, { recursive: true });
-        await writeFile(cachedPath, JSON.stringify({ places: allResults, nextPageToken: pageToken }, null, 2), "utf8");
-      }
     }
 
-    return allResults;
+    // Cache the raw API objects (not parsed records) so a cache hit parses them the same way.
+    if (opts.cacheDir) {
+      await mkdir(opts.cacheDir, { recursive: true });
+      await writeFile(cachedPath, JSON.stringify({ places: rawPlaces }, null, 2), "utf8");
+    }
+
+    return this.parsePlaceResults(rawPlaces);
   }
 
   private detectLanguageCode(country: string): string {
@@ -136,7 +141,7 @@ export class PlacesProvider implements ScanProvider {
         address: (place.formattedAddress as string) || null,
         lat: loc?.latitude ?? null,
         lon: loc?.longitude ?? null,
-        phone: (place.phoneNumber as string) || null,
+        phone: (place.internationalPhoneNumber as string) || (place.nationalPhoneNumber as string) || null,
         website: (place.websiteUri as string) || null,
         email: null,
         places_id: placeName ? placeName.split("/").pop() || null : null,
