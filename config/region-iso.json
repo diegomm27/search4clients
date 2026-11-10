@@ -1,0 +1,23 @@
+{
+  "regions": {
+    "ES": {
+      "Andalucía": "ES-AN",
+      "Aragón": "ES-AR",
+      "Asturias": "ES-AS",
+      "Baleares": "ES-IB",
+      "Canarias": "ES-CN",
+      "Cantabria": "ES-CB",
+      "Castilla-La Mancha": "ES-CM",
+      "Castilla y León": "ES-CL",
+      "Cataluña": "ES-CT",
+      "Comunidad Valenciana": "ES-VC",
+      "Extremadura": "ES-EX",
+      "Galicia": "ES-GA",
+      "Madrid": "ES-MD",
+      "Murcia": "ES-MC",
+      "Navarra": "ES-NC",
+      "País Vasco": "ES-PV",
+      "La Rioja": "ES-RI"
+    }
+  }
+}

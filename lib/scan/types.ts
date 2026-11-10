@@ -44,6 +44,8 @@ export type ProviderRequest = {
   placesType?: string | null;
   placesKeyword?: string | null;
   regionBboxes?: Record<string, [number, number, number, number]>;
+  /** ISO 3166-2 code for the selected region (e.g. "ES-RI" for La Rioja) */
+  regionIso?: string | null;
 };
 
 export type ScanOptions = {

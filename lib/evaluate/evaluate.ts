@@ -14,6 +14,19 @@ export function evaluateCandidate(config: SearchConfig, candidate: CandidateComp
   const excludeHits = config.exclude_signals
     .map((signal) => signal.trim())
     .filter((signal) => signal.length > 0 && excludeText.includes(signal.toLowerCase()));
+
+  // Generic chain/franchise exclusion terms ("large chains", "franchises")
+  // never appear verbatim in a candidate's data, but the scan detects chain
+  // membership from OSM `brand` tags (signal: "chain (osm brand: X)"). Make
+  // those exclusion terms act on that detected signal.
+  const CHAIN_EXCLUDE_TERMS = new Set(["chain", "chains", "franchise", "franchises"]);
+  const excludesChains = config.exclude_signals.some((signal) =>
+    signal.toLowerCase().split(/[^a-záéíóúñü]+/).some((word) => CHAIN_EXCLUDE_TERMS.has(word))
+  );
+  const isChain = candidate.observed_signals.some((signal) => signal.startsWith("chain (osm brand"));
+  if (excludesChains && isChain) {
+    excludeHits.push("chain (osm brand tag)");
+  }
   const isExcluded = excludeHits.length > 0;
   const hasWebsite = Boolean(candidate.website);
   const hasContact = Boolean(candidate.public_email || candidate.public_phone || candidate.contact_page);

@@ -22,6 +22,8 @@ type ScanRequest = {
   batchByRegion?: boolean;
   /** Bounding boxes for sub-regions: [minLat, minLon, maxLat, maxLon] */
   regionBboxes?: Record<string, [number, number, number, number]>;
+  /** ISO 3166-2 codes for sub-regions, keyed by region name */
+  regionIsoCodes?: Record<string, string>;
 };
 
 /** Region mapping for large countries — used for R5 region batching */
@@ -48,8 +50,9 @@ export async function runScan(request: ScanRequest): Promise<ScanResult> {
     console.log("No enabled sources match this country/category. Running with defaults.");
   }
 
-  // Load region bounding boxes if available
+  // Load region bounding boxes and ISO codes if available
   const bboxes = loadRegionBboxes(request.countryIso);
+  const regionIsoCodes = loadRegionIsoCodes(request.countryIso);
 
   // Check if we should batch by sub-region
   const shouldBatch = request.batchByRegion && !request.region && !request.city;
@@ -57,10 +60,10 @@ export async function runScan(request: ScanRequest): Promise<ScanResult> {
 
   if (shouldBatch && subRegions && subRegions.length > 0) {
     console.log(`Batching by ${subRegions.length} sub-regions for ${request.country}...`);
-    return runBatchScan(sources, matched, { ...request, regionBboxes: bboxes }, subRegions);
+    return runBatchScan(sources, matched, { ...request, regionBboxes: bboxes, regionIsoCodes }, subRegions);
   }
 
-  return runSingleScan(sources, matched, { ...request, regionBboxes: bboxes });
+  return runSingleScan(sources, matched, { ...request, regionBboxes: bboxes, regionIsoCodes });
 }
 
 async function runSingleScan(sources: SourceEntry[], matched: SourceEntry[], request: ScanRequest): Promise<ScanResult> {
@@ -138,6 +141,17 @@ function loadRegionBboxes(countryIso: string): Record<string, [number, number, n
   }
 }
 
+/** Load ISO 3166-2 codes for sub-regions of a country (used for exact Overpass area filters) */
+function loadRegionIsoCodes(countryIso: string): Record<string, string> {
+  try {
+    const raw = readFileSync("config/region-iso.json", "utf8");
+    const data = JSON.parse(raw);
+    return data.regions[countryIso] || {};
+  } catch {
+    return {};
+  }
+}
+
 function createProviders(sources: SourceEntry[], request: ScanRequest) {
   const providers: Array<{ id: string; provider: { scan(request: any, opts: any): Promise<RawRecord[]> } }> = [];
 
@@ -207,6 +221,7 @@ function buildProviderRequest(request: ScanRequest, sources: SourceEntry[]) {
     region: request.region,
     city: request.city,
     regionBboxes: request.regionBboxes,
+    regionIso: request.region ? (request.regionIsoCodes?.[request.region] ?? null) : null,
     osmTags: category.osm_tags,
     placesType: hasPlaces ? (category.places_type || null) : null,
     placesKeyword: hasPlaces ? (category.places_keyword || request.industry) : null
@@ -302,6 +317,12 @@ function extractSignals(record: RawRecord): string[] {
   const extra = record.extra || {};
   if (extra.shop || extra.amenity || extra.healthcare || extra.leisure || extra.office) {
     signals.push(`OSM type: ${extra.shop || extra.amenity || extra.healthcare || extra.leisure || extra.office}`);
+  }
+
+  // OSM marks chain/franchise locations with a `brand` tag; treat those as a
+  // chain signal so exclusion criteria like "large chains" can act on them.
+  if (extra.brand) {
+    signals.push(`chain (osm brand: ${extra.brand})`);
   }
 
   return signals;
