@@ -38,8 +38,8 @@ Thumbs.db
 prisma/dev.db
 prisma/dev.db-journal
 
-# Coverage
-coverage/
+# Test coverage output (root only — lib/coverage/ is source code)
+/coverage/
 
 # Local notes / chat transcripts
 example.md
