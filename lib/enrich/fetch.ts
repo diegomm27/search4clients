@@ -6,7 +6,13 @@ export type SiteData = {
   description: string | null;
   contactPage: string | null;
   publicEmail: string | null;
+  /** Every public email found on the home page and the contact/legal pages, best first. */
+  publicEmails: string[];
   publicPhone: string | null;
+  /** Lowercased visible text of the pages read (capped), for keyword signals. */
+  textSample: string;
+  /** Pages actually read for this site (home + contact/legal subpages). */
+  pagesRead: string[];
   hiringPage: string | null;
   pricingPage: string | null;
   blogPage: string | null;
@@ -78,9 +84,28 @@ export async function fetchAndParseSite(
 
   const techHints = extractTechHints($, html);
 
-  const bodyText = $("body").text().toLowerCase();
-  const publicEmail = extractEmails(html);
+  const siteHost = hostOf(canonicalUrl) || hostOf(normalizedUrl);
+  const pagesRead = [normalizedUrl];
+  let textSample = $("body").text().replace(/\s+/g, " ").toLowerCase();
+  let emails = extractAllEmails(html);
   const publicPhone = extractPhones(html);
+
+  // Small Spanish businesses rarely put the email on the home page, but the
+  // contact page and the legally required "aviso legal" (LSSI) usually carry it.
+  if (emails.length === 0) {
+    const subpages = findEmailSubpages($, normalizedUrl, contactPage).slice(0, 3);
+    for (const subUrl of subpages) {
+      await new Promise((resolve) => setTimeout(resolve, Math.max(delayMs, 500)));
+      const subHtml = await fetchHtml(subUrl);
+      if (!subHtml) continue;
+      pagesRead.push(subUrl);
+      emails = [...emails, ...extractAllEmails(subHtml)];
+      textSample += " " + cheerio.load(subHtml)("body").text().replace(/\s+/g, " ").toLowerCase();
+      if (emails.length > 0) break;
+    }
+  }
+  const publicEmails = rankEmails([...new Set(emails.map((e) => e.toLowerCase()))], siteHost);
+  const publicEmail = publicEmails[0] || null;
 
   return {
     canonicalUrl,
@@ -88,7 +113,10 @@ export async function fetchAndParseSite(
     description,
     contactPage,
     publicEmail,
+    publicEmails,
     publicPhone,
+    textSample: textSample.slice(0, 20000),
+    pagesRead,
     hiringPage,
     pricingPage,
     blogPage,
@@ -212,6 +240,9 @@ function extractTechHints($: cheerio.CheerioAPI, html: string): string[] {
     if (lower.includes("klaviyo")) hints.push("klaviyo");
   });
 
+  const lowerHtml = html.toLowerCase();
+  if (/wp-content|wp-includes/.test(lowerHtml)) hints.push("wordpress");
+
   const metas = $("meta");
   metas.each((_, el) => {
     const name = $(el).attr("name") || $(el).attr("property") || "";
@@ -223,38 +254,116 @@ function extractTechHints($: cheerio.CheerioAPI, html: string): string[] {
   return [...new Set(hints)];
 }
 
-function extractEmails(html: string): string | null {
-  // Prefer mailto: hrefs first, then fall back to regex extraction from body text
-  const mailtoEmails: string[] = [];
+const EMAIL_RE = /[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}/g;
+const FREE_EMAIL_DOMAINS = /(^|\.)(gmail|googlemail|yahoo|hotmail|outlook|aol|icloud|live|msn|protonmail|proton|gmx|yandex|zoho)\.[a-z.]+$/;
+const BAD_EMAIL_PARTS = /(example\.|sentry|wixpress|\.png$|\.jpe?g$|\.gif$|\.webp$|\.svg$|@2x|noreply|no-reply|domain\.com|email\.com|tudominio|yourdomain)/i;
+
+/** Every plausible public email in a page: mailto links, visible text and simple obfuscations. */
+export function extractAllEmails(html: string): string[] {
   const $ = cheerio.load(html);
-  $("a[href^='mailto:']").each((_: number, el: any) => {
+  const found: string[] = [];
+
+  $("a[href^='mailto:'], a[href^='MAILTO:']").each((_: number, el: any) => {
     const href = $(el).attr("href") || "";
-    const email = href.replace(/^mailto:/i, "").split("?")[0].split("#")[0];
-    if (email && /^[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}$/.test(email)) {
-      mailtoEmails.push(email);
+    const email = decodeURIComponent(href.replace(/^mailto:/i, "").split("?")[0].split("#")[0]).trim();
+    if (email) found.push(email);
+  });
+
+  const text = $("body").text()
+    // "info [at] business [dot] es", "info(arroba)business.es"
+    .replace(/\s*[\[(]\s*(at|arroba)\s*[\])]\s*/gi, "@")
+    .replace(/\s*[\[(]\s*(dot|punto)\s*[\])]\s*/gi, ".");
+  found.push(...(text.match(EMAIL_RE) || []));
+
+  // Cloudflare email protection: data-cfemail hex-encoded with a XOR key.
+  $("[data-cfemail]").each((_: number, el: any) => {
+    const decoded = decodeCfEmail($(el).attr("data-cfemail") || "");
+    if (decoded) found.push(decoded);
+  });
+
+  return found
+    .map((e) => e.replace(/^[.\-_]+|[.\-_]+$/g, ""))
+    .filter((e) => /^[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}$/.test(e))
+    .filter((e) => !BAD_EMAIL_PARTS.test(e));
+}
+
+/**
+ * Order emails best first: same domain as the site, then other company domains,
+ * then free providers (many small businesses only publish a Gmail address on
+ * their own site; it is still the business's published contact, so it is kept
+ * but ranked last).
+ */
+export function rankEmails(emails: string[], siteHost: string | null): string[] {
+  const base = siteHost ? siteHost.replace(/^www\./, "") : null;
+  const rank = (e: string) => {
+    const domain = e.split("@")[1].toLowerCase();
+    if (base && (domain === base || domain.endsWith("." + base) || base.endsWith("." + domain))) return 0;
+    if (FREE_EMAIL_DOMAINS.test(domain)) return 2;
+    return 1;
+  };
+  return [...emails].sort((a, b) => rank(a) - rank(b));
+}
+
+export function isFreeProviderEmail(email: string): boolean {
+  return FREE_EMAIL_DOMAINS.test(email.split("@")[1]?.toLowerCase() || "");
+}
+
+function decodeCfEmail(hex: string): string | null {
+  if (!/^[0-9a-f]+$/i.test(hex) || hex.length < 4) return null;
+  const key = parseInt(hex.slice(0, 2), 16);
+  let out = "";
+  for (let i = 2; i < hex.length; i += 2) {
+    out += String.fromCharCode(parseInt(hex.slice(i, i + 2), 16) ^ key);
+  }
+  return out.includes("@") ? out : null;
+}
+
+function hostOf(url: string | null): string | null {
+  if (!url) return null;
+  try {
+    return new URL(url).hostname.toLowerCase();
+  } catch {
+    return null;
+  }
+}
+
+/** Same-site pages likely to carry the email: contact, legal notice, privacy policy. */
+function findEmailSubpages($: cheerio.CheerioAPI, pageUrl: string, contactPage: string | null): string[] {
+  const host = hostOf(pageUrl);
+  const urls: string[] = [];
+  const push = (href: string | undefined) => {
+    if (!href || href.startsWith("mailto:") || href.startsWith("tel:") || href.startsWith("#")) return;
+    try {
+      const abs = new URL(href, pageUrl);
+      if (host && abs.hostname.toLowerCase() !== host) return;
+      abs.hash = "";
+      const s = abs.toString();
+      if (!urls.includes(s) && s !== pageUrl) urls.push(s);
+    } catch {
+      // ignore invalid hrefs
     }
+  };
+  if (contactPage) push(contactPage);
+  $("a[href]").each((_: number, el: any) => {
+    const href = $(el).attr("href") || "";
+    const text = $(el).text().toLowerCase();
+    if (/contact|aviso[- ]legal|legal|privacidad|privacy|cookies/.test(text + " " + href.toLowerCase())) push(href);
   });
+  // Contact first, then legal notice, then the rest.
+  const score = (u: string) => (/contact/.test(u) ? 0 : /aviso|legal/.test(u) ? 1 : 2);
+  return urls.sort((a, b) => score(a) - score(b));
+}
 
-  // Filter out personal email providers
-  const companyEmails = mailtoEmails.filter((e) => {
-    const domain = e.split("@")[1].toLowerCase();
-    return !/gmail\.com|yahoo\.com|hotmail\.com|outlook\.com|aol\.com|icloud\.com|live\.com|protonmail\.com|yahoo\.es/.test(domain);
-  });
-
-  if (companyEmails.length > 0) return companyEmails[0];
-
-  // Fallback: regex on the full HTML, but only look at body content
-  const bodyText = $("body").text();
-  const emailRegex = /[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}/g;
-  const matches = bodyText.match(emailRegex);
-  if (!matches || matches.length === 0) return null;
-
-  const filtered = matches.filter((e) => {
-    const domain = e.split("@")[1].toLowerCase();
-    return !/gmail\.com|yahoo\.com|hotmail\.com|outlook\.com|aol\.com|icloud\.com|live\.com|protonmail\.com|yahoo\.es/.test(domain);
-  });
-
-  return filtered[0] || null;
+async function fetchHtml(url: string): Promise<string | null> {
+  try {
+    const resp = await fetch(url, { signal: AbortSignal.timeout(15000) });
+    if (!resp.ok) return null;
+    const ct = resp.headers.get("content-type") || "";
+    if (!ct.includes("text/html") && !ct.includes("application/xhtml")) return null;
+    return await resp.text();
+  } catch {
+    return null;
+  }
 }
 
 function extractPhones(html: string): string | null {

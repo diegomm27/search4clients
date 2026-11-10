@@ -20,6 +20,8 @@ export type ExportLead = {
   suggested_outreach_angle: string | null;
   notes: string;
   source_links: string[];
+  /** Signals observed on the lead's pages (e.g. "has website", "uses cms"). */
+  observed_signals?: string[];
   created_at: Date | string;
   updated_at: Date | string;
 };
@@ -29,6 +31,7 @@ export type ExportLead = {
 const csvFields: Array<keyof ExportLead> = [
   "company_name",
   "city",
+  "region",
   "country",
   "score",
   "fit_grade",
@@ -37,6 +40,7 @@ const csvFields: Array<keyof ExportLead> = [
   "contact_page",
   "public_email",
   "public_phone",
+  "observed_signals",
   "source_links"
 ];
 

@@ -59,6 +59,7 @@ function toExportLead(lead: ReturnType<typeof evaluateCandidate>, index: number,
     suggested_outreach_angle: lead.suggested_outreach_angle,
     notes: `Lead ${index + 1}`,
     source_links: lead.sources ?? [],
+    observed_signals: lead.observed_signals ?? [],
     created_at: timestamp,
     updated_at: timestamp
   };
