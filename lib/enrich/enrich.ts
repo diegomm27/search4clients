@@ -27,34 +27,32 @@ export async function enrichCandidates(
   const maxCandidates = options?.maxCandidates ?? candidates.length;
   const candidatesToEnrich = candidates.slice(0, maxCandidates);
 
-  const results: EnrichResult[] = [];
   const delayMs = options?.delayMs ?? 500;
+  const concurrency = Math.max(1, options?.maxConcurrency ?? 4);
+  const results: EnrichResult[] = new Array(candidatesToEnrich.length);
+  let next = 0;
+  let done = 0;
 
-  for (let i = 0; i < candidatesToEnrich.length; i++) {
-    const candidate = candidatesToEnrich[i];
+  async function enrichOne(candidate: CandidateCompany): Promise<EnrichResult> {
     if (!candidate.website) {
-      results.push({
-        candidate,
-        signals: [],
-        enrichment_failed: true,
-        enrichment_notes: "No website URL to enrich."
-      });
-      continue;
+      return { candidate, signals: [], enrichment_failed: true, enrichment_notes: "No website URL to enrich." };
     }
 
-    const siteData = await fetchAndParseSite(candidate.website, { delayMs });
-
+    let siteData: Awaited<ReturnType<typeof fetchAndParseSite>> = null;
+    try {
+      siteData = await fetchAndParseSite(candidate.website, { delayMs });
+    } catch (err) {
+      // A slow body or a reset connection must not abort the whole run.
+      const reason = err instanceof Error ? err.message : String(err);
+      return { candidate, signals: [], enrichment_failed: true, enrichment_notes: `Failed to fetch ${candidate.website}: ${reason}` };
+    }
     if (!siteData) {
-      results.push({
-        candidate,
-        signals: [],
-        enrichment_failed: true,
-        enrichment_notes: `Failed to fetch ${candidate.website}`
-      });
-      continue;
+      return { candidate, signals: [], enrichment_failed: true, enrichment_notes: `Failed to fetch ${candidate.website}` };
     }
 
-    const signals = detectSignals(siteData);
+    const signals: string[] = detectSignals(siteData);
+    const otherEmails = siteData.publicEmails.filter((e) => e !== (siteData.publicEmail || candidate.public_email));
+    if (otherEmails.length > 0) signals.push(`other emails: ${otherEmails.slice(0, 3).join(", ")}`);
     const enrichedSignals = [...new Set([...candidate.observed_signals, ...signals])];
 
     const enriched: CandidateCompany = {
@@ -64,20 +62,24 @@ export async function enrichCandidates(
       public_email: siteData.publicEmail || candidate.public_email,
       public_phone: siteData.publicPhone || candidate.public_phone,
       observed_signals: enrichedSignals,
-      company_description: siteData.description || candidate.company_description
+      company_description: siteData.description || candidate.company_description,
+      sources: [...new Set([...candidate.sources, ...siteData.pagesRead])]
     };
+    return { candidate: enriched, signals, enrichment_failed: false, enrichment_notes: null };
+  }
 
-    results.push({
-      candidate: enriched,
-      signals,
-      enrichment_failed: false,
-      enrichment_notes: null
-    });
-
-    if (i < candidatesToEnrich.length - 1 && delayMs > 0) {
-      await new Promise((resolve) => setTimeout(resolve, delayMs));
+  async function worker() {
+    while (next < candidatesToEnrich.length) {
+      const i = next++;
+      results[i] = await enrichOne(candidatesToEnrich[i]);
+      done++;
+      if (done % 25 === 0 || done === candidatesToEnrich.length) {
+        console.log(`  enrich: ${done}/${candidatesToEnrich.length}`);
+      }
     }
   }
+
+  await Promise.all(Array.from({ length: Math.min(concurrency, candidatesToEnrich.length) }, worker));
 
   // Preserve non-enriched candidates (beyond the top N)
   const nonEnriched = candidates.slice(maxCandidates);
